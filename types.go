@@ -12,10 +12,12 @@ type event_pack struct {
 
 type touch_control_pack struct {
 	//触屏控制信息
-	action int8
-	id     int8
-	x      int
-	y      int
+	action   int8
+	id       int32
+	x        int32
+	y        int32
+	screen_x int32
+	screen_y int32
 }
 
 type position struct {
@@ -37,7 +39,7 @@ type joystickConfig struct {
 }
 
 type u_input_control_pack struct {
-	action int
-	arg1   int
-	arg2   int
+	action int8
+	arg1   int32
+	arg2   int32
 }

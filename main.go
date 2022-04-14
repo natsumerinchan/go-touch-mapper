@@ -68,13 +68,16 @@ func main() {
 
 	u_input := make(chan *u_input_control_pack)
 
-	go handel_touch(touch_controller)
+	// go handel_touch(touch_controller)
+	go direct_handel_touch(touch_controller)
 
 	go handel_u_input(u_input)
 
 	touchHandler := NewTouchHandler("EXAMPLE.JSON", event_reader, touch_controller, u_input)
 
 	go touchHandler.auto_handel_view_release()
+	go touchHandler.loop_handel_wasd_wheel()
+	go touchHandler.loop_handel_rs_move()
 	touchHandler.handel_event()
 
 	// th := TouchHandler{
