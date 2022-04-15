@@ -20,24 +20,6 @@ type touch_control_pack struct {
 	screen_y int32
 }
 
-type position struct {
-	x float32
-	y float32
-}
-
-type joystickStause struct {
-	ls_val position
-	rs_val position
-	lt_val float32
-	rt_val float32
-	hat0_x float32
-	hat0_y float32
-}
-
-type joystickConfig struct {
-	name string
-}
-
 type u_input_control_pack struct {
 	action int8
 	arg1   int32

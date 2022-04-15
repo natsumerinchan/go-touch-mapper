@@ -74,10 +74,13 @@ func direct_handel_touch(control_ch chan *touch_control_pack) {
 	fmt.Printf("init_orientation %d\n", init_orientation)
 	var count int32 = 0    //BTN_TOUCH 申请时为1 则按下 释放时为0 则松开
 	var last_id int32 = -1 //ABS_MT_SLOT last_id每次动作后修改 如果不等则额外发送MT_SLOT事件
-	fd, err := os.OpenFile("/dev/input/event5", os.O_RDWR, 0)
-	if err != nil {
-		fmt.Println(err, fd)
-	}
+	// fd, err := os.OpenFile("/dev/input/event5", os.O_RDWR, 0)
+	// if err != nil {
+	// 	fmt.Println(err, fd)
+	// }
+
+	fd := create_u_input_touch_screen(1439, 3119)
+
 	for {
 		control_data := <-control_ch
 		write_events := make([]*evdev.Event, 0)

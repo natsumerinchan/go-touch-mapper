@@ -69,7 +69,7 @@ func main() {
 	u_input := make(chan *u_input_control_pack)
 
 	go handel_u_input(u_input)
-	handel_u_input_interface(u_input)
+	go handel_u_input_interface(u_input)
 
 	// return
 
@@ -94,7 +94,7 @@ func main() {
 
 	for {
 	}
-	touchHandler.stop()
+	// touchHandler.stop()
 	// for {
 	// 	select {
 	// 	case control_data := <-touch_controller:
