@@ -5,9 +5,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
-	"strconv"
-	"strings"
 	"unsafe"
 
 	"github.com/kenshaw/evdev"
@@ -44,36 +41,36 @@ func sendEvents(fd *os.File, events []*evdev.Event) {
 	}
 }
 
-func get_orientation() uint8 {
-	cmd := "dumpsys input | grep 'SurfaceOrientation' | awk '{{print $2}}'"
-	out, err := exec.Command("bash", "-c", cmd).Output()
-	if err != nil {
-		return 0
-	}
-	out_str := string(out)
-	replaced := strings.Replace(out_str, "\n", "", -1)
-	uin_res, _ := strconv.ParseUint(replaced, 10, 8)
-	fmt.Printf("%s %+v\n", out_str, uin_res)
-	return uint8(uin_res)
-}
+// func get_orientation() uint8 {
+// 	cmd := "dumpsys input | grep 'SurfaceOrientation' | awk '{{print $2}}'"
+// 	out, err := exec.Command("bash", "-c", cmd).Output()
+// 	if err != nil {
+// 		return 0
+// 	}
+// 	out_str := string(out)
+// 	replaced := strings.Replace(out_str, "\n", "", -1)
+// 	uin_res, _ := strconv.ParseUint(replaced, 10, 8)
+// 	fmt.Printf("%s %+v\n", out_str, uin_res)
+// 	return uint8(uin_res)
+// }
 
-func transform_orientation(control_data *touch_control_pack, orientation uint8) (int32, int32) {
-	switch orientation {
-	case 0:
-		return control_data.x, control_data.y
-	case 1:
-		return control_data.screen_y - control_data.y, control_data.x
-	case 3:
-		return control_data.y, control_data.screen_x - control_data.x
-	default:
-		return control_data.x, control_data.y
-	}
-}
+// func transform_orientation(control_data *touch_control_pack, orientation uint8) (int32, int32) {
+// 	switch orientation {
+// 	case 0:
+// 		return control_data.x, control_data.y
+// 	case 1:
+// 		return control_data.screen_x - control_data.y, control_data.x
+// 	case 3:
+// 		return control_data.y, control_data.screen_x - control_data.x
+// 	default:
+// 		return control_data.x, control_data.y
+// 	}
+// }
 
 func direct_handel_touch(control_ch chan *touch_control_pack) {
 	sizeofEvent = int(unsafe.Sizeof(evdev.Event{}))
 	ev_sync := evdev.Event{Type: EV_SYN, Code: 0, Value: 0}
-	init_orientation := get_orientation()
+	init_orientation := uint8(0)
 	fmt.Printf("init_orientation %d\n", init_orientation)
 	var count int32 = 0    //BTN_TOUCH 申请时为1 则按下 释放时为0 则松开
 	var last_id int32 = -1 //ABS_MT_SLOT last_id每次动作后修改 如果不等则额外发送MT_SLOT事件
@@ -83,9 +80,10 @@ func direct_handel_touch(control_ch chan *touch_control_pack) {
 	}
 	for {
 		control_data := <-control_ch
-		x, y := transform_orientation(control_data, init_orientation)
-
 		write_events := make([]*evdev.Event, 0)
+		if control_data.id == -1 { //在任何正常情况下 这里是拿不到ID=-1的控制包的因此可以直接丢弃
+			continue
+		}
 		if control_data.action == TouchActionRequire {
 			last_id = control_data.id
 			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_SLOT, Value: control_data.id})
@@ -94,8 +92,8 @@ func direct_handel_touch(control_ch chan *touch_control_pack) {
 			if count == 1 {
 				write_events = append(write_events, &evdev.Event{Type: EV_KEY, Code: BTN_TOUCH, Value: DOWN})
 			}
-			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_X, Value: x})
-			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_Y, Value: y})
+			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_X, Value: control_data.x})
+			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_Y, Value: control_data.y})
 			write_events = append(write_events, &ev_sync)
 			sendEvents(fd, write_events)
 		} else if control_data.action == TouchActionRelease {
@@ -115,10 +113,18 @@ func direct_handel_touch(control_ch chan *touch_control_pack) {
 				last_id = control_data.id
 				write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_SLOT, Value: control_data.id})
 			}
-			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_X, Value: x})
-			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_Y, Value: y})
+			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_X, Value: control_data.x})
+			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_Y, Value: control_data.y})
 			write_events = append(write_events, &ev_sync)
 			sendEvents(fd, write_events)
 		}
 	}
 }
+
+//配置文件的坐标X,Y 对应竖屏模式下的坐标
+// 左上角为(0,0)
+// 向右为X轴正方向
+// 向下为Y轴正方向
+// 但是
+//程序运行时再横屏模式的
+//因此只需再使用inputManager的时候转换下就行了

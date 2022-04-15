@@ -518,11 +518,6 @@ func GetKeyName(keycode interface{}) string {
 	case string:
 		return keycode.(string)
 	case uint16:
-		// if keycode_2_friendly_name[keycode.(uint16)] != "" {
-		// 	return keycode_2_friendly_name[keycode.(uint16)]
-		// }
-		// fmt.Println("Keycode not found:", keycode.(uint16))
-		// return ""
 		if friendly_name, ok := keycode_2_friendly_name[keycode.(uint16)]; ok {
 			return friendly_name
 		} else {

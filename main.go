@@ -62,23 +62,30 @@ func main() {
 
 	running := true
 
-	event_reader := create_event_reader([]int{15, 16}, &running)
+	event_reader := create_event_reader([]int{15, 17}, &running)
 
 	touch_controller := make(chan *touch_control_pack)
 
 	u_input := make(chan *u_input_control_pack)
 
-	// go handel_touch(touch_controller)
-	go direct_handel_touch(touch_controller)
-
 	go handel_u_input(u_input)
+	handel_u_input_interface(u_input)
+
+	// return
+
+	go direct_handel_touch(touch_controller)
+	//注意  touch事件传递的XY坐标时为了直接写入触屏event的
+	//并且只能在横屏模式下使用
+	//而触屏event不会因为屏幕方向而改变坐标系
+	//但是inputManager会
+	//且程序时运行在横屏模式下的 即原本坐标就经过一次转换了
+	//所以在直接写event无需转换而inputManager需要
 
 	touchHandler := NewTouchHandler("EXAMPLE.JSON", event_reader, touch_controller, u_input)
-
 	go touchHandler.auto_handel_view_release()
 	go touchHandler.loop_handel_wasd_wheel()
 	go touchHandler.loop_handel_rs_move()
-	touchHandler.handel_event()
+	go touchHandler.handel_event()
 
 	// th := TouchHandler{
 	// 	id: 0,
@@ -87,6 +94,7 @@ func main() {
 
 	for {
 	}
+	touchHandler.stop()
 	// for {
 	// 	select {
 	// 	case control_data := <-touch_controller:
