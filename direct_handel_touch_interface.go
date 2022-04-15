@@ -83,6 +83,7 @@ func direct_handel_touch(control_ch chan *touch_control_pack) {
 
 	for {
 		control_data := <-control_ch
+		// fmt.Printf("control_data %+v\n", control_data)
 		write_events := make([]*evdev.Event, 0)
 		if control_data.id == -1 { //在任何正常情况下 这里是拿不到ID=-1的控制包的因此可以直接丢弃
 			continue

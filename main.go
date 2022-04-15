@@ -31,7 +31,6 @@ func create_event_reader(indexes []int, running *bool) chan *event_pack {
 				}
 				event_reader <- pack
 				events = make([]*evdev.Event, 0)
-
 			} else {
 				events = append(events, &event.Event)
 			}
@@ -62,17 +61,13 @@ func main() {
 
 	running := true
 
-	event_reader := create_event_reader([]int{15, 17}, &running)
+	event_reader := create_event_reader([]int{15, 16}, &running)
 
 	touch_controller := make(chan *touch_control_pack)
 
 	u_input := make(chan *u_input_control_pack)
 
 	go handel_u_input(u_input)
-	go handel_u_input_interface(u_input)
-
-	// return
-
 	go direct_handel_touch(touch_controller)
 	//注意  touch事件传递的XY坐标时为了直接写入触屏event的
 	//并且只能在横屏模式下使用
@@ -86,6 +81,8 @@ func main() {
 	go touchHandler.loop_handel_wasd_wheel()
 	go touchHandler.loop_handel_rs_move()
 	go touchHandler.handel_event()
+
+	go touchHandler.mix_touch(create_event_reader([]int{5}, &running))
 
 	// th := TouchHandler{
 	// 	id: 0,

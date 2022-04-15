@@ -10,10 +10,6 @@ import (
 	"github.com/lunixbochs/struc"
 )
 
-func handel_u_input_interface(u_input chan *u_input_control_pack) {
-	// create_u_input_touch_screen(1439, 3119)
-}
-
 func toUInputName(name []byte) [uinputMaxNameSize]byte {
 	var fixedSizeName [uinputMaxNameSize]byte
 	copy(fixedSizeName[:], name)
@@ -64,7 +60,7 @@ func create_u_input_touch_screen(width int, height int) *os.File {
 	absMax[absMtPositionY] = int32(height)
 	absMax[absMtTouchMajor] = 255
 	absMax[absMtWidthMajor] = 0
-	absMax[absMtSlot] = 9
+	absMax[absMtSlot] = 255
 	absMax[absMtTrackingId] = 65535
 
 	uiDev := UinputUserDev{

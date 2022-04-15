@@ -13,7 +13,7 @@ import (
 
 type TouchHandler struct {
 	events                  chan *event_pack            //接收事件的channel
-	touch_controller        chan *touch_control_pack    //发送触屏控制信号的channel
+	touch_controll_channel  chan *touch_control_pack    //发送触屏控制信号的channel
 	u_input                 chan *u_input_control_pack  //发送u_input控制信号的channel
 	map_on                  bool                        //映射模式开关
 	view_id                 int32                       //视角的触摸ID
@@ -117,13 +117,14 @@ func NewTouchHandler(
 	abs_last_map.Store("RS_Y", 0.5)
 
 	return &TouchHandler{
-		events:                  events,
-		touch_controller:        touch_controller,
-		u_input:                 u_input,
-		map_on:                  true, //false
-		view_id:                 -1,
-		wheel_id:                -1,
-		allocated_id:            []bool{false, false, false, false, false, false, false, false, false, false},
+		events:                 events,
+		touch_controll_channel: touch_controller,
+		u_input:                u_input,
+		map_on:                 true, //false
+		view_id:                -1,
+		wheel_id:               -1,
+		allocated_id:           []bool{false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false},
+		// ^^^ 是可以创建超过12个的 只是不显示白点罢了
 		config:                  config_json,
 		joystickInfo:            joystickInfo,
 		screen_x:                int32(config_json.Get("SCREEN").Get("SIZE").GetIndex(0).MustInt()),
@@ -151,14 +152,28 @@ func NewTouchHandler(
 	}
 }
 
-func (self *TouchHandler) require_id() int32 {
+func (self *TouchHandler) touch_require(x int32, y int32) int32 {
 	for i, v := range self.allocated_id {
 		if !v {
 			self.allocated_id[i] = true
+			self.send_touch_control_pack(TouchActionRequire, int32(i), x, y)
 			return int32(i)
 		}
 	}
 	return -1
+}
+
+func (self *TouchHandler) touch_release(id int32) {
+	if id != -1 {
+		self.allocated_id[int(id)] = false
+		self.send_touch_control_pack(TouchActionRelease, id, -1, -1)
+	}
+}
+
+func (self *TouchHandler) touch_move(id int32, x int32, y int32) {
+	if id != -1 {
+		self.send_touch_control_pack(TouchActionMove, id, x, y)
+	}
 }
 
 func (self *TouchHandler) u_input_control(action int8, arg1 int32, arg2 int32) {
@@ -169,8 +184,8 @@ func (self *TouchHandler) u_input_control(action int8, arg1 int32, arg2 int32) {
 	}
 }
 
-func (self *TouchHandler) touch_control(action int8, id int32, x int32, y int32) {
-	self.touch_controller <- &touch_control_pack{
+func (self *TouchHandler) send_touch_control_pack(action int8, id int32, x int32, y int32) {
+	self.touch_controll_channel <- &touch_control_pack{
 		action:   action,
 		id:       id,
 		x:        x,
@@ -201,11 +216,12 @@ func (self *TouchHandler) handel_view_move(offset_x int32, offset_y int32) { //�
 	self.view_lock.Lock()
 	self.auto_release_view_count = 0
 	if self.view_id == -1 {
-		self.view_id = self.require_id() //记得手动释放
-		if self.view_id == -1 {
-			return
-		}
-		self.touch_control(TouchActionRequire, self.view_id, self.view_init_x, self.view_init_y)
+		// self.view_id = self.require_id() //记得手动释放
+		// if self.view_id == -1 {
+		// 	return
+		// }
+		// self.touch_control(TouchActionRequire, self.view_id, self.view_init_x, self.view_init_y)
+		self.view_id = self.touch_require(self.view_init_x, self.view_init_y)
 		self.view_current_x = self.view_init_x
 		self.view_current_y = self.view_init_y
 	}
@@ -214,13 +230,15 @@ func (self *TouchHandler) handel_view_move(offset_x int32, offset_y int32) { //�
 	if true { //有界 or 无界 即 使用eventX 还是 inputManager
 		if self.view_current_x <= 0 || self.view_current_x >= self.screen_x || self.view_current_y <= 0 || self.view_current_y >= self.screen_y {
 			fmt.Printf("out of screen\n")
-			self.touch_control(TouchActionRelease, self.view_id, -1, -1)
-			self.touch_control(TouchActionRequire, self.view_id, self.view_init_x, self.view_init_y)
+			// self.touch_control(TouchActionRelease, self.view_id, -1, -1)
+			// self.touch_control(TouchActionRequire, self.view_id, self.view_init_x, self.view_init_y)
+			self.touch_release(self.view_id)
+			self.view_id = self.touch_require(self.view_init_x, self.view_init_y)
 			self.view_current_x = self.view_init_x - offset_y*self.view_speed_y
 			self.view_current_y = self.view_init_y + offset_x*self.view_speed_x
 		}
 	}
-	self.touch_control(TouchActionMove, self.view_id, self.view_current_x, self.view_current_y)
+	self.send_touch_control_pack(TouchActionMove, self.view_id, self.view_current_x, self.view_current_y)
 	self.view_lock.Unlock()
 }
 
@@ -232,7 +250,7 @@ func (self *TouchHandler) auto_handel_view_release() { //视角释放
 			if self.auto_release_view_count > 10 { //一秒钟不动 则释放
 				self.auto_release_view_count = 0
 				self.allocated_id[self.view_id] = false
-				self.touch_control(TouchActionRelease, self.view_id, -1, -1)
+				self.send_touch_control_pack(TouchActionRelease, self.view_id, -1, -1)
 				self.view_id = -1
 			}
 		}
@@ -245,17 +263,19 @@ func (self *TouchHandler) handel_wheel_action(action int8, abs_x int32, abs_y in
 	self.wheel_lock.Lock()
 	if action == Wheel_action_release { //释放
 		if self.wheel_id != -1 {
-			self.touch_control(TouchActionRelease, self.wheel_id, -1, -1)
+			self.send_touch_control_pack(TouchActionRelease, self.wheel_id, -1, -1)
 			// fmt.Printf("wheel release  %d -> -1\n", self.wheel_id)
 			self.allocated_id[self.wheel_id] = false
 			self.wheel_id = -1
 		}
 	} else if action == Wheel_action_move { //移动
 		if self.wheel_id == -1 { //如果在移动之前没有按下
-			self.wheel_id = self.require_id()                                                           //申请id
-			self.touch_control(TouchActionRequire, self.wheel_id, self.wheel_init_x, self.wheel_init_y) //按下中心
+			// self.wheel_id = self.require_id()                                                           //申请id
+			// self.touch_control(TouchActionRequire, self.wheel_id, self.wheel_init_x, self.wheel_init_y) //按下中心
+			self.wheel_id = self.touch_require(self.wheel_init_x, self.wheel_init_y)
 		}
-		self.touch_control(TouchActionMove, self.wheel_id, abs_x, abs_y) //移动
+		// self.touch_control(TouchActionMove, self.wheel_id, abs_x, abs_y) //移动
+		self.touch_move(self.wheel_id, abs_x, abs_y)
 	}
 	self.wheel_lock.Unlock()
 }
@@ -298,47 +318,49 @@ func (self *TouchHandler) excute_key_action(key_name string, up_down int32, acti
 		if up_down == DOWN {
 			x := int32(action.Get("POS").GetIndex(0).MustInt())
 			y := int32(action.Get("POS").GetIndex(1).MustInt())
-			tid := self.require_id()
-			self.touch_control(TouchActionRequire, tid, x, y)
-			self.key_action_state_save.Store(key_name, tid)
+			// tid := self.require_id()
+			// self.touch_control(TouchActionRequire, tid, x, y)
+			self.key_action_state_save.Store(key_name, self.touch_require(x, y))
 		} else if up_down == UP {
 			tid := state.(int32)
-			self.touch_control(TouchActionRelease, tid, -1, -1)
-			self.allocated_id[tid] = false
+			// self.touch_control(TouchActionRelease, tid, -1, -1)
+			// self.allocated_id[tid] = false
+			self.touch_release(tid)
 			self.key_action_state_save.Delete(key_name)
 		}
 	case "CLICK": //仅在按下的时候执行一次 不保存状态所以不响应down 也不会有down到这里
 		if up_down == DOWN {
 			x := int32(action.Get("POS").GetIndex(0).MustInt())
 			y := int32(action.Get("POS").GetIndex(1).MustInt())
-			tid := self.require_id()
-			// self.key_action_state_save.Store(key_name, tid)
-			self.touch_control(TouchActionRequire, tid, x, y)
+			// tid := self.require_id()
+			// self.touch_control(TouchActionRequire, tid, x, y)
+			tid := self.touch_require(x, y)
 			time.Sleep(time.Duration(8) * time.Millisecond) //8ms 120HZ下一次
-			self.touch_control(TouchActionRelease, tid, -1, -1)
-			self.allocated_id[tid] = false
-			// self.key_action_state_save.Delete(key_name)
+			// self.touch_control(TouchActionRelease, tid, -1, -1)
+			// self.allocated_id[tid] = false
+			self.touch_release(tid)
 		}
 
 	case "AUTO_FIRE": //连发 按下开始 松开结束 按照设置的间隔 持续点击
 		if up_down == DOWN {
 			x := int32(action.Get("POS").GetIndex(0).MustInt())
 			y := int32(action.Get("POS").GetIndex(1).MustInt())
-			tid := self.require_id()
 			down_time := action.Get("INTERVAL").GetIndex(0).MustInt()
 			interval_time := action.Get("INTERVAL").GetIndex(1).MustInt()
 			self.key_action_state_save.Store(key_name, true)
 			for {
 				if running, _ := self.key_action_state_save.Load(key_name); running == true {
-					self.touch_control(TouchActionRequire, tid, x, y)
+					// self.touch_control(TouchActionRequire, tid, x, y)
+					tid := self.touch_require(x, y)
 					time.Sleep(time.Duration(down_time) * time.Millisecond)
-					self.touch_control(TouchActionRelease, tid, -1, -1)
+					// self.touch_control(TouchActionRelease, tid, -1, -1)
+					self.touch_release(tid)
 					time.Sleep(time.Duration(interval_time) * time.Millisecond)
 				} else {
 					break
 				}
 			}
-			self.allocated_id[tid] = false
+			// self.allocated_id[tid] = false
 			self.key_action_state_save.Delete(key_name)
 		} else if up_down == UP {
 			self.key_action_state_save.Store(key_name, false)
@@ -352,16 +374,20 @@ func (self *TouchHandler) excute_key_action(key_name string, up_down int32, acti
 			for i := range action.Get("POS_S").MustArray() {
 				x := int32(action.Get("POS_S").GetIndex(i).GetIndex(0).MustInt())
 				y := int32(action.Get("POS_S").GetIndex(i).GetIndex(1).MustInt())
-				tid := self.require_id()
-				self.touch_control(TouchActionRequire, tid, x, y)
+				// tid := self.require_id()
+				// self.touch_control(TouchActionRequire, tid, x, y)
+				tid := self.touch_require(x, y)
 				tid_save = append(tid_save, tid)
 				time.Sleep(time.Duration(8) * time.Millisecond) // 间隔8ms 是否需要延迟有待验证
 			}
 			<-release_signal
 			self.key_action_state_save.Delete(key_name)
 			for i := len(tid_save) - 1; i >= 0; i-- {
-				self.touch_control(TouchActionRelease, tid_save[i], -1, -1)
-				self.allocated_id[tid_save[i]] = false
+				// self.touch_control(TouchActionRelease, tid_save[i], -1, -1)
+				// if tid_save[i] != -1 {
+				// 	self.allocated_id[tid_save[i]] = false
+				// }
+				self.touch_release(tid_save[i])
 				time.Sleep(time.Duration(8) * time.Millisecond)
 			}
 		} else if up_down == UP {
@@ -374,25 +400,29 @@ func (self *TouchHandler) excute_key_action(key_name string, up_down int32, acti
 		}
 	case "DRAG": //只响应一次按下  可同时多次触发
 		if up_down == DOWN {
-			tid := self.require_id()
+
 			pos_len := len(action.Get("POS_S").MustArray())
 			interval_time := action.Get("INTERVAL").GetIndex(0).MustInt()
 			fmt.Printf("pos_len:%d, interval_time:%d\n", pos_len, interval_time)
 			init_x := int32(action.Get("POS_S").GetIndex(0).GetIndex(0).MustInt())
 			init_y := int32(action.Get("POS_S").GetIndex(0).GetIndex(1).MustInt())
-			self.touch_control(TouchActionRequire, tid, init_x, init_y)
+			// self.touch_control(TouchActionRequire, tid, init_x, init_y)
+			tid := self.touch_require(init_x, init_y)
 			time.Sleep(time.Duration(interval_time) * time.Millisecond)
 			for index := 1; index < pos_len-1; index++ {
 				x := int32(action.Get("POS_S").GetIndex(index).GetIndex(0).MustInt())
 				y := int32(action.Get("POS_S").GetIndex(index).GetIndex(1).MustInt())
-				self.touch_control(TouchActionMove, tid, x, y)
+				// self.touch_control(TouchActionMove, tid, x, y)
+				self.touch_move(tid, x, y)
 				time.Sleep(time.Duration(interval_time) * time.Millisecond)
 			}
 			end_x := int32(action.Get("POS_S").GetIndex(pos_len - 1).GetIndex(0).MustInt())
 			end_y := int32(action.Get("POS_S").GetIndex(pos_len - 1).GetIndex(1).MustInt())
-			self.touch_control(TouchActionMove, tid, end_x, end_y)
-			self.touch_control(TouchActionRelease, tid, -1, -1)
-			self.allocated_id[tid] = false
+			self.touch_move(tid, end_x, end_y)
+			self.touch_release(tid)
+			// self.touch_control(TouchActionMove, tid, end_x, end_y)
+			// self.touch_control(TouchActionRelease, tid, -1, -1)
+			// self.allocated_id[tid] = false
 		} else if up_down == UP {
 
 		}
@@ -532,6 +562,65 @@ func (self *TouchHandler) handel_abs_events(events []*evdev.Event, dev_name stri
 
 }
 
+func (self *TouchHandler) mix_touch(touch_events chan *event_pack) {
+	id_2_vid := make([]int32, 10) //硬件ID到虚拟ID的映射
+	var x int32 = -1
+	var y int32 = -1
+	var last_id int32 = 0
+	pos_s := make([][]int32, 10)
+	for i := 0; i < 10; i++ {
+		pos_s[i] = make([]int32, 2)
+	}
+	id_stause := make([]bool, 10)
+	for i := 0; i < 10; i++ {
+		id_stause[i] = false
+	}
+	for {
+		event_pack := <-touch_events
+		copy_pos_s := make([][]int32, 10)
+		copy(copy_pos_s, pos_s)
+		copy_id_stause := make([]bool, 10)
+		copy(copy_id_stause, id_stause)
+		for _, event := range event_pack.events {
+			switch event.Code {
+			case ABS_MT_POSITION_X:
+				x = event.Value
+				pos_s[last_id] = []int32{x, y}
+			case ABS_MT_POSITION_Y:
+				y = event.Value
+				pos_s[last_id] = []int32{x, y}
+			case ABS_MT_TRACKING_ID:
+				if event.Value == -1 {
+					id_stause[last_id] = false
+				} else {
+					id_stause[last_id] = true
+				}
+			case ABS_MT_SLOT:
+				last_id = event.Value
+			}
+		}
+		for i := 0; i < 10; i++ {
+			if copy_id_stause[i] != id_stause[i] {
+				if id_stause[i] { //false -> true 申请
+					id_2_vid[i] = self.touch_require(pos_s[i][0], pos_s[i][1])
+				} else {
+					self.touch_release(id_2_vid[i])
+				}
+			} else {
+				if pos_s[i][0] != copy_pos_s[i][0] || pos_s[i][1] != copy_pos_s[i][1] {
+					self.touch_move(id_2_vid[i], pos_s[i][0], pos_s[i][1])
+					fmt.Printf("%v:[%d,%d] \n", id_2_vid[i], pos_s[i][0], pos_s[i][1])
+				}
+			}
+		}
+		// for i := 0; i < 3; i++ {
+		// 	fmt.Printf("%v:[%d,%d] ", id_stause[i], pos_s[i][0], pos_s[i][1])
+		// }
+		fmt.Println()
+
+	}
+}
+
 func (self *TouchHandler) handel_event() {
 	for {
 		key_events := make([]*evdev.Event, 0)
@@ -569,3 +658,37 @@ func (self *TouchHandler) handel_event() {
 func (self *TouchHandler) stop() {
 
 }
+
+// case ABS_MT_SLOT:
+// 	last_id = event.Value
+// 	tid, ok := id_2_vid[event.Value] //尝试从映射中获取虚拟ID
+// 	if !ok {                         //如果没有 则说明是新申请的触摸点
+// 		fmt.Printf("new touch id: %d\n", event.Value)
+// 		tid = self.touch_require(x, y) //申请虚拟触摸
+// 		id_2_vid[event.Value] = tid    //保存
+// 		flag = false
+// 	} else {
+// 		flag = true
+// 		//是已知的 即切换事件 会在最后处理
+// 	}
+// case ABS_MT_TRACKING_ID:
+// 	if event.Value == -1 {
+// 		self.touch_release(id_2_vid[last_id])
+// 		fmt.Printf("touch release %d\n", last_id)
+// 		delete(id_2_vid, last_id)
+// 		flag = false
+// 	}
+// }
+
+// for _, event := range event_pack.events {
+// 	switch event.Code {
+// 	case ABS_MT_POSITION_X:
+// 		fmt.Printf("ABS_MT_POSITION_X %d\n", event.Value)
+// 	case ABS_MT_POSITION_Y:
+// 		fmt.Printf("ABS_MT_POSITION_Y %d\n", event.Value)
+// 	case ABS_MT_TRACKING_ID:
+// 		fmt.Printf("ABS_MT_TRACKING_ID %d\n", event.Value)
+// 	case ABS_MT_SLOT:
+// 		fmt.Printf("ABS_MT_SLOT %d\n", event.Value)
+// 	}
+// }
