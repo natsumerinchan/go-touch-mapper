@@ -81,46 +81,49 @@ func direct_handel_touch(control_ch chan *touch_control_pack) {
 
 	fd := create_u_input_touch_screen(1439, 3119)
 
+	write_events := make([]*evdev.Event, 0)
 	for {
 		control_data := <-control_ch
 		// fmt.Printf("control_data %+v\n", control_data)
-		write_events := make([]*evdev.Event, 0)
-		if control_data.id == -1 { //在任何正常情况下 这里是拿不到ID=-1的控制包的因此可以直接丢弃
-			continue
-		}
-		if control_data.action == TouchActionRequire {
-			last_id = control_data.id
-			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_SLOT, Value: control_data.id})
-			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_TRACKING_ID, Value: control_data.id})
-			count += 1
-			if count == 1 {
-				write_events = append(write_events, &evdev.Event{Type: EV_KEY, Code: BTN_TOUCH, Value: DOWN})
-			}
-			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_X, Value: control_data.x})
-			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_Y, Value: control_data.y})
+		switch control_data.action {
+		case TouchActionSync:
+			// fmt.Printf("TouchActionSync %v\n", write_events)
 			write_events = append(write_events, &ev_sync)
 			sendEvents(fd, write_events)
-		} else if control_data.action == TouchActionRelease {
-			if last_id != control_data.id {
+			write_events = make([]*evdev.Event, 0)
+		case TouchActionRequire:
+			if control_data.id != -1 { //在任何正常情况下 这里是拿不到ID=-1的控制包的因此可以直接丢弃
 				last_id = control_data.id
 				write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_SLOT, Value: control_data.id})
+				write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_TRACKING_ID, Value: control_data.id})
+				count += 1
+				if count == 1 {
+					write_events = append(write_events, &evdev.Event{Type: EV_KEY, Code: BTN_TOUCH, Value: DOWN})
+				}
+				write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_X, Value: control_data.x})
+				write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_Y, Value: control_data.y})
 			}
-			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_TRACKING_ID, Value: -1})
-			count -= 1
-			if count == 0 {
-				write_events = append(write_events, &evdev.Event{Type: EV_KEY, Code: BTN_TOUCH, Value: UP})
+		case TouchActionRelease:
+			if control_data.id != -1 {
+				if last_id != control_data.id {
+					last_id = control_data.id
+					write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_SLOT, Value: control_data.id})
+				}
+				write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_TRACKING_ID, Value: -1})
+				count -= 1
+				if count == 0 {
+					write_events = append(write_events, &evdev.Event{Type: EV_KEY, Code: BTN_TOUCH, Value: UP})
+				}
 			}
-			write_events = append(write_events, &ev_sync)
-			sendEvents(fd, write_events)
-		} else if control_data.action == TouchActionMove {
-			if last_id != control_data.id {
-				last_id = control_data.id
-				write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_SLOT, Value: control_data.id})
+		case TouchActionMove:
+			if control_data.id != -1 {
+				if last_id != control_data.id {
+					last_id = control_data.id
+					write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_SLOT, Value: control_data.id})
+				}
+				write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_X, Value: control_data.x})
+				write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_Y, Value: control_data.y})
 			}
-			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_X, Value: control_data.x})
-			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_Y, Value: control_data.y})
-			write_events = append(write_events, &ev_sync)
-			sendEvents(fd, write_events)
 		}
 	}
 }

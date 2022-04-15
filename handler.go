@@ -49,6 +49,7 @@ const (
 	TouchActionRequire int8 = 0
 	TouchActionRelease int8 = 1
 	TouchActionMove    int8 = 2
+	TouchActionSync    int8 = 3
 )
 
 const (
@@ -152,11 +153,16 @@ func NewTouchHandler(
 	}
 }
 
+func (self *TouchHandler) touch_sync() {
+	self.send_touch_control_pack(TouchActionSync, -1, -1, -1)
+}
+
 func (self *TouchHandler) touch_require(x int32, y int32) int32 {
 	for i, v := range self.allocated_id {
 		if !v {
 			self.allocated_id[i] = true
 			self.send_touch_control_pack(TouchActionRequire, int32(i), x, y)
+			// self.touch_sync()
 			return int32(i)
 		}
 	}
@@ -167,12 +173,14 @@ func (self *TouchHandler) touch_release(id int32) {
 	if id != -1 {
 		self.allocated_id[int(id)] = false
 		self.send_touch_control_pack(TouchActionRelease, id, -1, -1)
+		// self.touch_sync()
 	}
 }
 
 func (self *TouchHandler) touch_move(id int32, x int32, y int32) {
 	if id != -1 {
 		self.send_touch_control_pack(TouchActionMove, id, x, y)
+		// self.touch_sync()
 	}
 }
 
@@ -238,7 +246,8 @@ func (self *TouchHandler) handel_view_move(offset_x int32, offset_y int32) { //�
 			self.view_current_y = self.view_init_y + offset_x*self.view_speed_x
 		}
 	}
-	self.send_touch_control_pack(TouchActionMove, self.view_id, self.view_current_x, self.view_current_y)
+	// self.send_touch_control_pack(TouchActionMove, self.view_id, self.view_current_x, self.view_current_y)
+	self.touch_move(self.view_id, self.view_current_x, self.view_current_y)
 	self.view_lock.Unlock()
 }
 
@@ -250,7 +259,8 @@ func (self *TouchHandler) auto_handel_view_release() { //视角释放
 			if self.auto_release_view_count > 10 { //一秒钟不动 则释放
 				self.auto_release_view_count = 0
 				self.allocated_id[self.view_id] = false
-				self.send_touch_control_pack(TouchActionRelease, self.view_id, -1, -1)
+				// self.send_touch_control_pack(TouchActionRelease, self.view_id, -1, -1)
+				self.touch_release(self.view_id)
 				self.view_id = -1
 			}
 		}
@@ -263,7 +273,8 @@ func (self *TouchHandler) handel_wheel_action(action int8, abs_x int32, abs_y in
 	self.wheel_lock.Lock()
 	if action == Wheel_action_release { //释放
 		if self.wheel_id != -1 {
-			self.send_touch_control_pack(TouchActionRelease, self.wheel_id, -1, -1)
+			// self.send_touch_control_pack(TouchActionRelease, self.wheel_id, -1, -1)
+			self.touch_release(self.wheel_id)
 			// fmt.Printf("wheel release  %d -> -1\n", self.wheel_id)
 			self.allocated_id[self.wheel_id] = false
 			self.wheel_id = -1
@@ -616,6 +627,7 @@ func (self *TouchHandler) mix_touch(touch_events chan *event_pack) {
 		// for i := 0; i < 3; i++ {
 		// 	fmt.Printf("%v:[%d,%d] ", id_stause[i], pos_s[i][0], pos_s[i][1])
 		// }
+		self.touch_sync()
 		fmt.Println()
 
 	}
