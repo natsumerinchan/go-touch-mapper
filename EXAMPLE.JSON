@@ -177,11 +177,12 @@
             ]
         },
         "KEY_Q": {
-            "TYPE": "PRESS",
+            "TYPE": "AUTO_FIRE",
             "POS": [
                 247,
                 1555
-            ]
+            ],
+            "INTERVAL":[20,20]
         },
         "KEY_T": {
             "TYPE": "PRESS",

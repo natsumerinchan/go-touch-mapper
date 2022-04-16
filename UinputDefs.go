@@ -12,7 +12,13 @@ import (
 const (
 	evSyn           = 0x00
 	evKey           = 0x01
+	evRel           = 0x02
 	evAbs           = 0x03
+	evMsc           = 0x04
+	relX            = 0x00
+	relY            = 0x01
+	relWheel        = 0x08
+	relHWheel       = 0x06
 	btnTouch        = 0x14a
 	synReport       = 0
 	synMtReport     = 2
@@ -140,6 +146,10 @@ func UISETEVBIT() int {
 
 func UISETKEYBIT() int {
 	return _IOW('U', 101, 4) //sizeof(int)
+}
+
+func UISETEVRELBIT() int {
+	return _IOW('U', 102, 4) //sizeof(int)
 }
 
 func UISETABSBIT() int {

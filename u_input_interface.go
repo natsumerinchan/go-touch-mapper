@@ -3,11 +3,15 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
-	"os"
 	"syscall"
 
+	"fmt"
+	"os"
+	"unsafe"
+
 	"github.com/lunixbochs/struc"
+
+	"github.com/kenshaw/evdev"
 )
 
 func toUInputName(name []byte) [uinputMaxNameSize]byte {
@@ -80,4 +84,161 @@ func create_u_input_touch_screen(width int, height int) *os.File {
 	deviceFile.Write(uInputDevToBytes(uiDev))
 	createDevice(deviceFile)
 	return deviceFile
+}
+
+func create_u_input_mouse_keyboard() *os.File {
+	deviceFile, err := os.OpenFile("/dev/uinput", syscall.O_WRONLY|syscall.O_NONBLOCK, 0660)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return nil
+	}
+	ioctl(deviceFile.Fd(), UISETEVBIT(), evSyn)
+	ioctl(deviceFile.Fd(), UISETEVBIT(), evKey)
+	ioctl(deviceFile.Fd(), UISETEVBIT(), evRel)
+	ioctl(deviceFile.Fd(), UISETEVRELBIT(), relX)
+	ioctl(deviceFile.Fd(), UISETEVRELBIT(), relY)
+	ioctl(deviceFile.Fd(), UISETEVRELBIT(), relWheel)
+	ioctl(deviceFile.Fd(), UISETEVRELBIT(), relHWheel)
+	for i := 0x110; i < 0x117; i++ {
+		ioctl(deviceFile.Fd(), UISETKEYBIT(), uintptr(i))
+	}
+	for i := 0; i < 256; i++ {
+		ioctl(deviceFile.Fd(), UISETKEYBIT(), uintptr(i))
+	}
+
+	uiDev := UinputUserDev{
+		Name: toUInputName([]byte("v_keyboard_mouse")),
+		ID: InputID{
+			BusType: 0,
+			Vendor:  randUInt16Num(0x2000),
+			Product: randUInt16Num(0x2000),
+			Version: randUInt16Num(0x20),
+		},
+		EffectsMax: 0,
+		AbsMax:     [absCnt]int32{},
+		AbsMin:     [absCnt]int32{},
+		AbsFuzz:    [absCnt]int32{},
+		AbsFlat:    [absCnt]int32{},
+	}
+	deviceFile.Write(uInputDevToBytes(uiDev))
+	createDevice(deviceFile)
+	return deviceFile
+}
+
+func handel_u_input_mouse_keyboard(u_input chan *u_input_control_pack) {
+	sizeofEvent := int(unsafe.Sizeof(evdev.Event{}))
+	sendEvents := func(fd *os.File, events []*evdev.Event) {
+		buf := make([]byte, sizeofEvent*len(events))
+		for i, event := range events {
+			copy(buf[i*sizeofEvent:], (*(*[1<<27 - 1]byte)(unsafe.Pointer(event)))[:sizeofEvent])
+		}
+		n, err := fd.Write(buf)
+		if err != nil {
+			fmt.Println(err, n)
+		}
+	}
+	ev_sync := evdev.Event{Type: EV_SYN, Code: 0, Value: 0}
+	fd := create_u_input_mouse_keyboard()
+	for {
+		pack := <-u_input
+		write_events := make([]*evdev.Event, 0)
+		// fmt.Printf("%v fd=%v\n", pack, fd)
+		switch pack.action {
+		case UInput_mouse_move:
+			write_events = append(write_events, &evdev.Event{Type: EV_REL, Code: REL_X, Value: pack.arg1})
+			write_events = append(write_events, &evdev.Event{Type: EV_REL, Code: REL_Y, Value: pack.arg2})
+			write_events = append(write_events, &ev_sync)
+			sendEvents(fd, write_events)
+		case UInput_mouse_btn:
+			write_events = append(write_events, &evdev.Event{Type: EV_KEY, Code: uint16(pack.arg1), Value: pack.arg2})
+			write_events = append(write_events, &ev_sync)
+			sendEvents(fd, write_events)
+		case UInput_mouse_wheel:
+			write_events = append(write_events, &evdev.Event{Type: EV_REL, Code: uint16(pack.arg1), Value: pack.arg2})
+			write_events = append(write_events, &ev_sync)
+			sendEvents(fd, write_events)
+		case UInput_key_event:
+			write_events = append(write_events, &evdev.Event{Type: EV_KEY, Code: uint16(pack.arg1), Value: pack.arg2})
+			write_events = append(write_events, &ev_sync)
+			sendEvents(fd, write_events)
+		}
+	}
+}
+
+const (
+	ABS_MT_POSITION_X  = 0x35
+	ABS_MT_POSITION_Y  = 0x36
+	ABS_MT_SLOT        = 0x2F
+	ABS_MT_TRACKING_ID = 0x39
+	EV_SYN             = 0x00
+	EV_KEY             = 0x01
+	EV_REL             = 0x02
+	EV_ABS             = 0x03
+	REL_X              = 0x00
+	REL_Y              = 0x01
+	REL_WHEEL          = 0x08
+	REL_HWHEEL         = 0x06
+	SYN_REPORT         = 0x00
+	BTN_TOUCH          = 0x14A
+)
+
+func handel_touch_using_vTouch(control_ch chan *touch_control_pack) {
+	sizeofEvent := int(unsafe.Sizeof(evdev.Event{}))
+	sendEvents := func(fd *os.File, events []*evdev.Event) {
+		buf := make([]byte, sizeofEvent*len(events))
+		for i, event := range events {
+			copy(buf[i*sizeofEvent:], (*(*[1<<27 - 1]byte)(unsafe.Pointer(event)))[:sizeofEvent])
+		}
+		n, err := fd.Write(buf)
+		if err != nil {
+			fmt.Println(err, n)
+		}
+	}
+	ev_sync := evdev.Event{Type: EV_SYN, Code: 0, Value: 0}
+	init_orientation := uint8(0)
+	fmt.Printf("init_orientation %d\n", init_orientation)
+	var count int32 = 0    //BTN_TOUCH 申请时为1 则按下 释放时为0 则松开
+	var last_id int32 = -1 //ABS_MT_SLOT last_id每次动作后修改 如果不等则额外发送MT_SLOT事件
+	fd := create_u_input_touch_screen(1439, 3119)
+	for {
+		control_data := <-control_ch
+		write_events := make([]*evdev.Event, 0)
+		if control_data.id == -1 { //在任何正常情况下 这里是拿不到ID=-1的控制包的因此可以直接丢弃
+			continue
+		}
+		if control_data.action == TouchActionRequire {
+			last_id = control_data.id
+			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_SLOT, Value: control_data.id})
+			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_TRACKING_ID, Value: control_data.id})
+			count += 1
+			if count == 1 {
+				write_events = append(write_events, &evdev.Event{Type: EV_KEY, Code: BTN_TOUCH, Value: DOWN})
+			}
+			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_X, Value: control_data.x})
+			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_Y, Value: control_data.y})
+			write_events = append(write_events, &ev_sync)
+			sendEvents(fd, write_events)
+		} else if control_data.action == TouchActionRelease {
+			if last_id != control_data.id {
+				last_id = control_data.id
+				write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_SLOT, Value: control_data.id})
+			}
+			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_TRACKING_ID, Value: -1})
+			count -= 1
+			if count == 0 {
+				write_events = append(write_events, &evdev.Event{Type: EV_KEY, Code: BTN_TOUCH, Value: UP})
+			}
+			write_events = append(write_events, &ev_sync)
+			sendEvents(fd, write_events)
+		} else if control_data.action == TouchActionMove {
+			if last_id != control_data.id {
+				last_id = control_data.id
+				write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_SLOT, Value: control_data.id})
+			}
+			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_X, Value: control_data.x})
+			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_Y, Value: control_data.y})
+			write_events = append(write_events, &ev_sync)
+			sendEvents(fd, write_events)
+		}
+	}
 }
