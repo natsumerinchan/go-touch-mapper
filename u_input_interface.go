@@ -217,8 +217,8 @@ func handel_touch_using_vTouch(control_ch chan *touch_control_pack) {
 	fmt.Printf("已创建虚拟触屏 : %vx%v\n", w, h)
 	fd := create_u_input_touch_screen(w, h)
 	for {
-		control_data := <-control_ch
 		write_events := make([]*evdev.Event, 0)
+		control_data := <-control_ch
 		if control_data.id == -1 { //在任何正常情况下 这里是拿不到ID=-1的控制包的因此可以直接丢弃
 			continue
 		}

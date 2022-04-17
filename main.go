@@ -71,7 +71,6 @@ func create_event_reader(indexes []int, running *bool) chan *event_pack {
 func main() {
 
 	parser := argparse.NewParser("go-touch-mappeer", " ")
-
 	var eventList *[]int = parser.IntList("e", "event", &argparse.Options{
 		Required: false,
 		Help:     "键盘或鼠标或手柄的设备号",
@@ -84,6 +83,12 @@ func main() {
 	var configPath *string = parser.String("c", "config", &argparse.Options{
 		Required: true,
 		Help:     "配置文件路径",
+	})
+
+	var usingInputManager *bool = parser.Flag("i", "inputManager", &argparse.Options{
+		Required: false,
+		Default:  false,
+		Help:     "是否使用inputManager,需开启额外控制进程",
 	})
 
 	err := parser.Parse(os.Args)
@@ -104,7 +109,13 @@ func main() {
 	u_input := make(chan *u_input_control_pack)
 
 	go handel_u_input_mouse_keyboard(u_input)
-	go handel_touch_using_vTouch(touch_controller)
+
+	if *usingInputManager {
+		fmt.Println("触屏控制将使用inputManager处理")
+		go handel_touch_using_input_manager(touch_controller)
+	} else {
+		go handel_touch_using_vTouch(touch_controller)
+	}
 
 	touchHandler := NewTouchHandler(*configPath, event_reader, touch_controller, u_input)
 

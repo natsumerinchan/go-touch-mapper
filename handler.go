@@ -110,9 +110,6 @@ func NewTouchHandler(
 	content, _ := ioutil.ReadFile(mapperFilePath)
 	config_json, _ := simplejson.NewJson(content)
 
-	//对./目录下所有JSON文件
-	//读取并以文件名作为key创建一个map
-
 	joystickInfo := make(map[string]*simplejson.Json)
 	//check if dir ./joystickInfos exists
 	path, _ := exec.LookPath(os.Args[0])
@@ -672,11 +669,13 @@ func (self *TouchHandler) mix_touch(touch_events chan *event_pack) {
 		id_stause[i] = false
 	}
 	for {
-		event_pack := <-touch_events
 		copy_pos_s := make([][]int32, 10)
 		copy(copy_pos_s, pos_s)
 		copy_id_stause := make([]bool, 10)
 		copy(copy_id_stause, id_stause)
+
+		event_pack := <-touch_events
+
 		for _, event := range event_pack.events {
 			switch event.Code {
 			case ABS_MT_POSITION_X:
