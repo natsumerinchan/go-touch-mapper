@@ -2,9 +2,14 @@ package main
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"log"
+	"net"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/akamensky/argparse"
 	"github.com/kenshaw/evdev"
@@ -32,41 +37,98 @@ type u_input_control_pack struct {
 	arg2   int32
 }
 
-func create_event_reader(indexes []int, running *bool) chan *event_pack {
-	reader := func(event_reader chan *event_pack, index int, running *bool) {
+func create_event_reader(indexes []int) chan *event_pack {
+	reader := func(event_reader chan *event_pack, index int) {
 		fd, err := os.OpenFile(fmt.Sprintf("/dev/input/event%d", index), os.O_RDONLY, 0)
 		if err != nil {
 			log.Fatal(err)
 		}
 		d := evdev.Open(fd)
 		defer d.Close()
-		ch := d.Poll(context.Background())
+		event_ch := d.Poll(context.Background())
 		events := make([]*evdev.Event, 0)
 		dev_name := d.Name()
-		// fmt.Println("", dev_name)
 		fmt.Printf("开始读取设备 : %s\n", dev_name)
 		d.Lock()
 		defer d.Unlock()
-		for *running {
-			event := <-ch
-			if event.Type == evdev.SyncReport {
-				pack := &event_pack{
-					dev_name: dev_name,
-					events:   events,
+		for {
+			select {
+			case <-global_close_signal:
+				fmt.Printf("释放设备 : %s \n ", dev_name)
+				return
+			case event := <-event_ch:
+				if event.Type == evdev.SyncReport {
+					pack := &event_pack{
+						dev_name: dev_name,
+						events:   events,
+					}
+					event_reader <- pack
+					events = make([]*evdev.Event, 0)
+				} else {
+					events = append(events, &event.Event)
 				}
-				event_reader <- pack
-				events = make([]*evdev.Event, 0)
-			} else {
-				events = append(events, &event.Event)
 			}
 		}
+
 	}
 	event_reader := make(chan *event_pack)
 	for _, index := range indexes {
-		go reader(event_reader, index, running)
+		go reader(event_reader, index)
 	}
 	return event_reader
 }
+
+func udp_event_injector(ch chan *event_pack, port int) {
+	listen, err := net.ListenUDP("udp", &net.UDPAddr{
+		IP:   net.IPv4(0, 0, 0, 0),
+		Port: port,
+	})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer listen.Close()
+
+	recv_ch := make(chan []byte)
+	go func() {
+		for {
+			var buf [1024]byte
+			n, _, err := listen.ReadFromUDP(buf[:])
+			if err != nil {
+				break
+			}
+			recv_ch <- buf[:n]
+		}
+	}()
+	fmt.Printf("已准备接收远程事件: 0.0.0.0:%d\n", port)
+	for {
+		select {
+		case <-global_close_signal:
+			return
+		case pack := <-recv_ch:
+			// fmt.Printf("%v\n", pack)
+			event_count := int(pack[0])
+			events := make([]*evdev.Event, 0)
+			for i := 0; i < event_count; i++ {
+				event := &evdev.Event{
+					Type:  evdev.EventType(uint16(binary.LittleEndian.Uint16(pack[8*i+1 : 8*i+3]))),
+					Code:  uint16(binary.LittleEndian.Uint16(pack[8*i+3 : 8*i+5])),
+					Value: int32(binary.LittleEndian.Uint32(pack[8*i+5 : 8*i+9])),
+				}
+				// fmt.Printf("%v\n", event)
+				events = append(events, event)
+			}
+			e_pack := &event_pack{
+				dev_name: string(pack[event_count*8+1:]),
+				events:   events,
+			}
+			ch <- e_pack
+			// fmt.Printf("接收到事件 : %v\n", e_pack)
+		}
+	}
+}
+
+var global_close_signal = make(chan bool) //仅会在程序退出时关闭  不用于其他用途
 
 func main() {
 
@@ -91,46 +153,58 @@ func main() {
 		Help:     "是否使用inputManager,需开启额外控制进程",
 	})
 
+	var using_remote_control *bool = parser.Flag("r", "remoteControl", &argparse.Options{
+		Required: false,
+		Default:  false,
+		Help:     "是否从UDP接收远程事件",
+	})
+
+	var udp_port *int = parser.Int("p", "port", &argparse.Options{
+		Required: false,
+		Help:     "指定监听远程事件的UDP端口号,默认61069",
+		Default:  61069,
+	})
+
 	err := parser.Parse(os.Args)
 	if err != nil {
 		fmt.Print(parser.Usage(err))
+		os.Exit(1)
 	}
 
-	running := true
-	event_reader := create_event_reader(*eventList, &running)
-
-	var touch_channel chan *event_pack
-	if *touchIndex != -1 {
-		touch_channel = create_event_reader([]int{*touchIndex}, &running)
-	}
-
-	touch_controller := make(chan *touch_control_pack)
-
-	u_input := make(chan *u_input_control_pack)
-
-	go handel_u_input_mouse_keyboard(u_input)
-
-	if *usingInputManager {
-		fmt.Println("触屏控制将使用inputManager处理")
-		go handel_touch_using_input_manager(touch_controller)
-	} else {
-		go handel_touch_using_vTouch(touch_controller)
-	}
-
-	touchHandler := NewTouchHandler(*configPath, event_reader, touch_controller, u_input)
+	events_ch := create_event_reader(*eventList)
+	touch_control_ch := make(chan *touch_control_pack)
+	u_input_control_ch := make(chan *u_input_control_pack)
+	touch_event_ch := make(chan *event_pack)
 
 	if *touchIndex != -1 {
 		fmt.Printf("启用触屏混合 : event%d\n", *touchIndex)
-		go touchHandler.mix_touch(touch_channel)
+		touch_event_ch = create_event_reader([]int{*touchIndex})
 	}
 
+	go handel_u_input_mouse_keyboard(u_input_control_ch)
+	if *usingInputManager {
+		fmt.Println("触屏控制将使用inputManager处理")
+		go handel_touch_using_input_manager(touch_control_ch)
+	} else {
+		go handel_touch_using_vTouch(touch_control_ch)
+	}
+
+	touchHandler := InitTouchHandler(*configPath, events_ch, touch_control_ch, u_input_control_ch)
+
+	go touchHandler.mix_touch(touch_event_ch)
 	go touchHandler.auto_handel_view_release()
 	go touchHandler.loop_handel_wasd_wheel()
 	go touchHandler.loop_handel_rs_move()
 	go touchHandler.handel_event()
 
-	for {
+	if *using_remote_control {
+		go udp_event_injector(events_ch, *udp_port)
 	}
-	// touchHandler.stop()
 
+	exitChan := make(chan os.Signal)
+	signal.Notify(exitChan, os.Interrupt, os.Kill, syscall.SIGTERM)
+	<-exitChan
+	close(global_close_signal)
+	fmt.Println("已停止")
+	time.Sleep(time.Millisecond * 40)
 }

@@ -143,27 +143,30 @@ func handel_u_input_mouse_keyboard(u_input chan *u_input_control_pack) {
 	ev_sync := evdev.Event{Type: EV_SYN, Code: 0, Value: 0}
 	fd := create_u_input_mouse_keyboard()
 	for {
-		pack := <-u_input
 		write_events := make([]*evdev.Event, 0)
-		// fmt.Printf("%v fd=%v\n", pack, fd)
-		switch pack.action {
-		case UInput_mouse_move:
-			write_events = append(write_events, &evdev.Event{Type: EV_REL, Code: REL_X, Value: pack.arg1})
-			write_events = append(write_events, &evdev.Event{Type: EV_REL, Code: REL_Y, Value: pack.arg2})
-			write_events = append(write_events, &ev_sync)
-			sendEvents(fd, write_events)
-		case UInput_mouse_btn:
-			write_events = append(write_events, &evdev.Event{Type: EV_KEY, Code: uint16(pack.arg1), Value: pack.arg2})
-			write_events = append(write_events, &ev_sync)
-			sendEvents(fd, write_events)
-		case UInput_mouse_wheel:
-			write_events = append(write_events, &evdev.Event{Type: EV_REL, Code: uint16(pack.arg1), Value: pack.arg2})
-			write_events = append(write_events, &ev_sync)
-			sendEvents(fd, write_events)
-		case UInput_key_event:
-			write_events = append(write_events, &evdev.Event{Type: EV_KEY, Code: uint16(pack.arg1), Value: pack.arg2})
-			write_events = append(write_events, &ev_sync)
-			sendEvents(fd, write_events)
+		select {
+		case <-global_close_signal:
+			return
+		case pack := <-u_input:
+			switch pack.action {
+			case UInput_mouse_move:
+				write_events = append(write_events, &evdev.Event{Type: EV_REL, Code: REL_X, Value: pack.arg1})
+				write_events = append(write_events, &evdev.Event{Type: EV_REL, Code: REL_Y, Value: pack.arg2})
+				write_events = append(write_events, &ev_sync)
+				sendEvents(fd, write_events)
+			case UInput_mouse_btn:
+				write_events = append(write_events, &evdev.Event{Type: EV_KEY, Code: uint16(pack.arg1), Value: pack.arg2})
+				write_events = append(write_events, &ev_sync)
+				sendEvents(fd, write_events)
+			case UInput_mouse_wheel:
+				write_events = append(write_events, &evdev.Event{Type: EV_REL, Code: uint16(pack.arg1), Value: pack.arg2})
+				write_events = append(write_events, &ev_sync)
+				sendEvents(fd, write_events)
+			case UInput_key_event:
+				write_events = append(write_events, &evdev.Event{Type: EV_KEY, Code: uint16(pack.arg1), Value: pack.arg2})
+				write_events = append(write_events, &ev_sync)
+				sendEvents(fd, write_events)
+			}
 		}
 	}
 }
@@ -216,45 +219,50 @@ func handel_touch_using_vTouch(control_ch chan *touch_control_pack) {
 	w, h := get_wm_size()
 	fmt.Printf("已创建虚拟触屏 : %vx%v\n", w, h)
 	fd := create_u_input_touch_screen(w, h)
+	defer fd.Close()
 	for {
 		write_events := make([]*evdev.Event, 0)
-		control_data := <-control_ch
-		if control_data.id == -1 { //在任何正常情况下 这里是拿不到ID=-1的控制包的因此可以直接丢弃
-			continue
-		}
-		if control_data.action == TouchActionRequire {
-			last_id = control_data.id
-			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_SLOT, Value: control_data.id})
-			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_TRACKING_ID, Value: control_data.id})
-			count += 1
-			if count == 1 {
-				write_events = append(write_events, &evdev.Event{Type: EV_KEY, Code: BTN_TOUCH, Value: DOWN})
+		select {
+		case <-global_close_signal:
+			return
+		case control_data := <-control_ch:
+			if control_data.id == -1 { //在任何正常情况下 这里是拿不到ID=-1的控制包的因此可以直接丢弃
+				continue
 			}
-			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_X, Value: control_data.x})
-			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_Y, Value: control_data.y})
-			write_events = append(write_events, &ev_sync)
-			sendEvents(fd, write_events)
-		} else if control_data.action == TouchActionRelease {
-			if last_id != control_data.id {
+			if control_data.action == TouchActionRequire {
 				last_id = control_data.id
 				write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_SLOT, Value: control_data.id})
+				write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_TRACKING_ID, Value: control_data.id})
+				count += 1
+				if count == 1 {
+					write_events = append(write_events, &evdev.Event{Type: EV_KEY, Code: BTN_TOUCH, Value: DOWN})
+				}
+				write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_X, Value: control_data.x})
+				write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_Y, Value: control_data.y})
+				write_events = append(write_events, &ev_sync)
+				sendEvents(fd, write_events)
+			} else if control_data.action == TouchActionRelease {
+				if last_id != control_data.id {
+					last_id = control_data.id
+					write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_SLOT, Value: control_data.id})
+				}
+				write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_TRACKING_ID, Value: -1})
+				count -= 1
+				if count == 0 {
+					write_events = append(write_events, &evdev.Event{Type: EV_KEY, Code: BTN_TOUCH, Value: UP})
+				}
+				write_events = append(write_events, &ev_sync)
+				sendEvents(fd, write_events)
+			} else if control_data.action == TouchActionMove {
+				if last_id != control_data.id {
+					last_id = control_data.id
+					write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_SLOT, Value: control_data.id})
+				}
+				write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_X, Value: control_data.x})
+				write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_Y, Value: control_data.y})
+				write_events = append(write_events, &ev_sync)
+				sendEvents(fd, write_events)
 			}
-			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_TRACKING_ID, Value: -1})
-			count -= 1
-			if count == 0 {
-				write_events = append(write_events, &evdev.Event{Type: EV_KEY, Code: BTN_TOUCH, Value: UP})
-			}
-			write_events = append(write_events, &ev_sync)
-			sendEvents(fd, write_events)
-		} else if control_data.action == TouchActionMove {
-			if last_id != control_data.id {
-				last_id = control_data.id
-				write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_SLOT, Value: control_data.id})
-			}
-			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_X, Value: control_data.x})
-			write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_Y, Value: control_data.y})
-			write_events = append(write_events, &ev_sync)
-			sendEvents(fd, write_events)
 		}
 	}
 }
