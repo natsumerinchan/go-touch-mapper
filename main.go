@@ -189,8 +189,7 @@ func main() {
 		go handel_touch_using_vTouch(touch_control_ch)
 	}
 
-	touchHandler := InitTouchHandler(*configPath, events_ch, touch_control_ch, u_input_control_ch)
-
+	touchHandler := InitTouchHandler(*configPath, events_ch, touch_control_ch, u_input_control_ch, !*usingInputManager)
 	go touchHandler.mix_touch(touch_event_ch)
 	go touchHandler.auto_handel_view_release()
 	go touchHandler.loop_handel_wasd_wheel()

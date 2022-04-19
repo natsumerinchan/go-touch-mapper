@@ -33,9 +33,11 @@ type TouchHandler struct {
 	view_current_y           int32                       //当前视角映射的y坐标
 	view_speed_x             int32                       //视角x方向的速度
 	view_speed_y             int32                       //视角y方向的速度
-	wheel_init_x             int32                       //初始化左摇杆映射的x坐标
-	wheel_init_y             int32                       //初始化左摇杆映射的y坐标
-	wheel_range              int32                       //左摇杆的x轴范围
+	rs_speed_x               float64
+	rs_speed_y               float64
+	wheel_init_x             int32 //初始化左摇杆映射的x坐标
+	wheel_init_y             int32 //初始化左摇杆映射的y坐标
+	wheel_range              int32 //左摇杆的x轴范围
 	wheel_wasd               []string
 	view_lock                sync.Mutex //视角控制相关的锁 用于自动释放和控制相关
 	wheel_lock               sync.Mutex //左摇杆控制相关的锁 用于自动释放和控制相关
@@ -50,6 +52,7 @@ type TouchHandler struct {
 	key_action_state_save    sync.Map
 	BTN_SELECT_UP_DOWN       int32
 	KEYBOARD_SWITCH_KEY_NAME string
+	view_range_limited       bool //视角是否有界
 }
 
 const (
@@ -96,6 +99,7 @@ func InitTouchHandler(
 	events chan *event_pack,
 	touch_controller chan *touch_control_pack,
 	u_input chan *u_input_control_pack,
+	view_range_limited bool,
 ) *TouchHandler {
 	rand.Seed(time.Now().UnixNano())
 
@@ -167,9 +171,13 @@ func InitTouchHandler(
 		view_current_y: int32(config_json.Get("MOUSE").Get("POS").GetIndex(1).MustInt()),
 		view_speed_x:   int32(config_json.Get("MOUSE").Get("SPEED").GetIndex(0).MustInt()),
 		view_speed_y:   int32(config_json.Get("MOUSE").Get("SPEED").GetIndex(1).MustInt()),
-		wheel_init_x:   int32(config_json.Get("WHEEL").Get("POS").GetIndex(0).MustInt()),
-		wheel_init_y:   int32(config_json.Get("WHEEL").Get("POS").GetIndex(1).MustInt()),
-		wheel_range:    int32(config_json.Get("WHEEL").Get("RANGE").MustInt()),
+		// rs_speed_x:     config_json.Get("MOUSE").Get("RS_SPEED").GetIndex(0).MustFloat64(),
+		// rs_speed_y:     config_json.Get("MOUSE").Get("RS_SPEED").GetIndex(1).MustFloat64(),
+		rs_speed_x:   48,
+		rs_speed_y:   48,
+		wheel_init_x: int32(config_json.Get("WHEEL").Get("POS").GetIndex(0).MustInt()),
+		wheel_init_y: int32(config_json.Get("WHEEL").Get("POS").GetIndex(1).MustInt()),
+		wheel_range:  int32(config_json.Get("WHEEL").Get("RANGE").MustInt()),
 		wheel_wasd: []string{
 			config_json.Get("WHEEL").Get("WASD").GetIndex(0).MustString(),
 			config_json.Get("WHEEL").Get("WASD").GetIndex(1).MustString(),
@@ -189,6 +197,7 @@ func InitTouchHandler(
 		key_action_state_save:    sync.Map{},
 		BTN_SELECT_UP_DOWN:       0,
 		KEYBOARD_SWITCH_KEY_NAME: config_json.Get("MOUSE").Get("SWITCH_KEY").MustString(),
+		view_range_limited:       view_range_limited,
 	}
 }
 
@@ -245,7 +254,7 @@ func (self *TouchHandler) loop_handel_rs_move() {
 			rs_x, rs_y := self.getStick("RS")
 			if rs_x != 0.5 || rs_y != 0.5 {
 				if self.map_on {
-					self.handel_view_move(int32((rs_x-0.5)*24), int32((rs_y-0.5)*24))
+					self.handel_view_move(int32((rs_x-0.5)*self.rs_speed_x), int32((rs_y-0.5)*self.rs_speed_y))
 				} else {
 					self.u_input_control(UInput_mouse_move, int32((rs_x-0.5)*24), int32((rs_y-0.5)*24))
 				}
@@ -265,16 +274,19 @@ func (self *TouchHandler) handel_view_move(offset_x int32, offset_y int32) { //�
 	}
 	self.view_current_x -= offset_y * self.view_speed_y //用的时直接写event坐标系
 	self.view_current_y += offset_x * self.view_speed_x
-	if true { //有界 or 无界 即 使用eventX 还是 inputManager
-		if self.view_current_x <= 0 || self.view_current_x >= self.screen_x || self.view_current_y <= 0 || self.view_current_y >= self.screen_y {
+	if self.view_range_limited { //有界 or 无界 即 使用eventX 还是 inputManager
+		if self.view_current_x < 200 || self.view_current_x > (self.screen_x-200) || self.view_current_y < 200 || self.view_current_y > (self.screen_y-200) {
 			self.touch_release(self.view_id)
-			rand_x, rand_y := rand_offset(), rand_offset()
+			// time.Sleep(time.Duration(1) * time.Millisecond)
+			// rand_x, rand_y := rand_offset(), rand_offset()
+			rand_x, rand_y := int32(0), int32(0)
 			self.view_id = self.touch_require(self.view_init_x+rand_x, self.view_init_y+rand_y)
 			self.view_current_x = self.view_init_x + rand_x - offset_y*self.view_speed_y
 			self.view_current_y = self.view_init_y + rand_y + offset_x*self.view_speed_x
 		}
 	}
 	self.touch_move(self.view_id, self.view_current_x, self.view_current_y)
+
 	self.view_lock.Unlock()
 }
 

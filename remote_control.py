@@ -196,21 +196,22 @@ mousecodemap = [
     mousebtn['BTN_EXTRA'],
 ]
 
-
-
-def pack_event(type,code,value):
-    return (type).to_bytes(2, 'little', signed=False) + \
-              (code).to_bytes(2, 'little', signed=True) + \
-                (value).to_bytes(4, 'little', signed=True)
-
 def pack_events(events,name):
     buffer = (len(events)).to_bytes(1, 'little', signed=False)
     for (type,code,value) in events:
-        buffer += pack_event(type,code,value)
+        buffer += struct.pack('<HHi', type, code, value)
     buffer += name.encode()
-    # print(events,buffer)
     return buffer
 
+def unpack_events(buffer):
+    print(buffer)
+    length = buffer[0]
+    events = [
+        struct.unpack('<HHi', buffer[i*8+1:i*8+9])
+        for i in range(length)
+    ]
+    name = buffer[length*8+1:].decode()
+    return events, name
 
 class sender:
     def __init__(self, addr) -> None:
@@ -243,7 +244,7 @@ class sender:
 
 
 if __name__ == "__main__":
-    senderInstance = sender("192.168.1.64:8888")
+    senderInstance = sender("192.168.1.64:61069")
     pygame.init()
     screen = pygame.display.set_mode((320, 240), 0, 32)
     pygame.mouse.set_visible(False)

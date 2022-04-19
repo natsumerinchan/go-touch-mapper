@@ -22,6 +22,7 @@ func handel_touch_using_input_manager(control_ch chan *touch_control_pack) {
 		case <-global_close_signal:
 			return
 		case control_data := <-control_ch:
+			// fmt.Printf("控制设备 : %v\n", control_data)
 			action := byte(control_data.action)
 			id := byte(control_data.id & 0xff)
 			x := make([]byte, 4)
