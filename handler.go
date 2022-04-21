@@ -33,9 +33,11 @@ type TouchHandler struct {
 	view_current_y           int32                       //当前视角映射的y坐标
 	view_speed_x             int32                       //视角x方向的速度
 	view_speed_y             int32                       //视角y方向的速度
-	wheel_init_x             int32                       //初始化左摇杆映射的x坐标
-	wheel_init_y             int32                       //初始化左摇杆映射的y坐标
-	wheel_range              int32                       //左摇杆的x轴范围
+	rs_speed_x               float64
+	rs_speed_y               float64
+	wheel_init_x             int32 //初始化左摇杆映射的x坐标
+	wheel_init_y             int32 //初始化左摇杆映射的y坐标
+	wheel_range              int32 //左摇杆的x轴范围
 	wheel_wasd               []string
 	view_lock                sync.Mutex //视角控制相关的锁 用于自动释放和控制相关
 	wheel_lock               sync.Mutex //左摇杆控制相关的锁 用于自动释放和控制相关
@@ -50,6 +52,7 @@ type TouchHandler struct {
 	key_action_state_save    sync.Map
 	BTN_SELECT_UP_DOWN       int32
 	KEYBOARD_SWITCH_KEY_NAME string
+	view_range_limited       bool //视角是否有界
 }
 
 const (
@@ -91,11 +94,12 @@ func rand_offset() int32 {
 	return rand.Int31n(20) - 10
 }
 
-func NewTouchHandler(
+func InitTouchHandler(
 	mapperFilePath string,
 	events chan *event_pack,
 	touch_controller chan *touch_control_pack,
 	u_input chan *u_input_control_pack,
+	view_range_limited bool,
 ) *TouchHandler {
 	rand.Seed(time.Now().UnixNano())
 
@@ -167,9 +171,13 @@ func NewTouchHandler(
 		view_current_y: int32(config_json.Get("MOUSE").Get("POS").GetIndex(1).MustInt()),
 		view_speed_x:   int32(config_json.Get("MOUSE").Get("SPEED").GetIndex(0).MustInt()),
 		view_speed_y:   int32(config_json.Get("MOUSE").Get("SPEED").GetIndex(1).MustInt()),
-		wheel_init_x:   int32(config_json.Get("WHEEL").Get("POS").GetIndex(0).MustInt()),
-		wheel_init_y:   int32(config_json.Get("WHEEL").Get("POS").GetIndex(1).MustInt()),
-		wheel_range:    int32(config_json.Get("WHEEL").Get("RANGE").MustInt()),
+		// rs_speed_x:     config_json.Get("MOUSE").Get("RS_SPEED").GetIndex(0).MustFloat64(),
+		// rs_speed_y:     config_json.Get("MOUSE").Get("RS_SPEED").GetIndex(1).MustFloat64(),
+		rs_speed_x:   48,
+		rs_speed_y:   48,
+		wheel_init_x: int32(config_json.Get("WHEEL").Get("POS").GetIndex(0).MustInt()),
+		wheel_init_y: int32(config_json.Get("WHEEL").Get("POS").GetIndex(1).MustInt()),
+		wheel_range:  int32(config_json.Get("WHEEL").Get("RANGE").MustInt()),
 		wheel_wasd: []string{
 			config_json.Get("WHEEL").Get("WASD").GetIndex(0).MustString(),
 			config_json.Get("WHEEL").Get("WASD").GetIndex(1).MustString(),
@@ -189,6 +197,7 @@ func NewTouchHandler(
 		key_action_state_save:    sync.Map{},
 		BTN_SELECT_UP_DOWN:       0,
 		KEYBOARD_SWITCH_KEY_NAME: config_json.Get("MOUSE").Get("SWITCH_KEY").MustString(),
+		view_range_limited:       view_range_limited,
 	}
 }
 
@@ -238,15 +247,20 @@ func (self *TouchHandler) send_touch_control_pack(action int8, id int32, x int32
 
 func (self *TouchHandler) loop_handel_rs_move() {
 	for {
-		rs_x, rs_y := self.getStick("RS")
-		if rs_x != 0.5 || rs_y != 0.5 {
-			if self.map_on {
-				self.handel_view_move(int32((rs_x-0.5)*24), int32((rs_y-0.5)*24))
-			} else {
-				self.u_input_control(UInput_mouse_move, int32((rs_x-0.5)*24), int32((rs_y-0.5)*24))
+		select {
+		case <-global_close_signal:
+			return
+		default:
+			rs_x, rs_y := self.getStick("RS")
+			if rs_x != 0.5 || rs_y != 0.5 {
+				if self.map_on {
+					self.handel_view_move(int32((rs_x-0.5)*self.rs_speed_x), int32((rs_y-0.5)*self.rs_speed_y))
+				} else {
+					self.u_input_control(UInput_mouse_move, int32((rs_x-0.5)*24), int32((rs_y-0.5)*24))
+				}
 			}
+			time.Sleep(time.Duration(10) * time.Millisecond)
 		}
-		time.Sleep(time.Duration(10) * time.Millisecond)
 	}
 }
 
@@ -260,31 +274,39 @@ func (self *TouchHandler) handel_view_move(offset_x int32, offset_y int32) { //�
 	}
 	self.view_current_x -= offset_y * self.view_speed_y //用的时直接写event坐标系
 	self.view_current_y += offset_x * self.view_speed_x
-	if true { //有界 or 无界 即 使用eventX 还是 inputManager
-		if self.view_current_x <= 0 || self.view_current_x >= self.screen_x || self.view_current_y <= 0 || self.view_current_y >= self.screen_y {
+	if self.view_range_limited { //有界 or 无界 即 使用eventX 还是 inputManager
+		if self.view_current_x < 200 || self.view_current_x > (self.screen_x-200) || self.view_current_y < 200 || self.view_current_y > (self.screen_y-200) {
 			self.touch_release(self.view_id)
-			rand_x, rand_y := rand_offset(), rand_offset()
+			// time.Sleep(time.Duration(1) * time.Millisecond)
+			// rand_x, rand_y := rand_offset(), rand_offset()
+			rand_x, rand_y := int32(0), int32(0)
 			self.view_id = self.touch_require(self.view_init_x+rand_x, self.view_init_y+rand_y)
 			self.view_current_x = self.view_init_x + rand_x - offset_y*self.view_speed_y
 			self.view_current_y = self.view_init_y + rand_y + offset_x*self.view_speed_x
 		}
 	}
 	self.touch_move(self.view_id, self.view_current_x, self.view_current_y)
+
 	self.view_lock.Unlock()
 }
 
 func (self *TouchHandler) auto_handel_view_release() { //视角释放
 	for {
-		self.view_lock.Lock()
-		if self.view_id != -1 {
-			self.auto_release_view_count += 1
-			if self.auto_release_view_count > 10 { //一秒钟不动 则释放
-				self.auto_release_view_count = 0
-				self.view_id = self.touch_release(self.view_id)
+		select {
+		case <-global_close_signal:
+			return
+		default:
+			self.view_lock.Lock()
+			if self.view_id != -1 {
+				self.auto_release_view_count += 1
+				if self.auto_release_view_count > 10 { //一秒钟不动 则释放
+					self.auto_release_view_count = 0
+					self.view_id = self.touch_release(self.view_id)
+				}
 			}
+			self.view_lock.Unlock()
+			time.Sleep(time.Duration(20) * time.Millisecond)
 		}
-		self.view_lock.Unlock()
-		time.Sleep(time.Duration(20) * time.Millisecond)
 	}
 }
 
@@ -347,25 +369,28 @@ func get_offset_val(now, target int32) int32 {
 
 func (self *TouchHandler) loop_handel_wasd_wheel() { //循环处理wasd映射轮盘并控制释放
 	for {
-		wasd_wheel_target_x, wasd_wheel_target_y := self.get_wasd_now_target() //获取目标位置
-
-		if self.wheel_init_x == wasd_wheel_target_x && self.wheel_init_y == wasd_wheel_target_y {
-			self.wasd_wheel_released = true //如果wasd目标位置 等于 wasd轮盘初始位置 则认为轮盘释放
-			self.wasd_wheel_last_x = self.wheel_init_x + rand_offset()
-			self.wasd_wheel_last_y = self.wheel_init_y + rand_offset()
-		} else {
-			self.wasd_wheel_released = false
-			if self.wasd_wheel_last_x != wasd_wheel_target_x || self.wasd_wheel_last_y != wasd_wheel_target_y {
-				self.wasd_wheel_last_x = get_offset_val(self.wasd_wheel_last_x, wasd_wheel_target_x)
-				self.wasd_wheel_last_y = get_offset_val(self.wasd_wheel_last_y, wasd_wheel_target_y)
-				self.handel_wheel_action(Wheel_action_move, self.wasd_wheel_last_x + +rand_offset(), self.wasd_wheel_last_y + +rand_offset())
+		select {
+		case <-global_close_signal:
+			return
+		default:
+			wasd_wheel_target_x, wasd_wheel_target_y := self.get_wasd_now_target() //获取目标位置
+			if self.wheel_init_x == wasd_wheel_target_x && self.wheel_init_y == wasd_wheel_target_y {
+				self.wasd_wheel_released = true //如果wasd目标位置 等于 wasd轮盘初始位置 则认为轮盘释放
+				self.wasd_wheel_last_x = self.wheel_init_x + rand_offset()
+				self.wasd_wheel_last_y = self.wheel_init_y + rand_offset()
+			} else {
+				self.wasd_wheel_released = false
+				if self.wasd_wheel_last_x != wasd_wheel_target_x || self.wasd_wheel_last_y != wasd_wheel_target_y {
+					self.wasd_wheel_last_x = get_offset_val(self.wasd_wheel_last_x, wasd_wheel_target_x)
+					self.wasd_wheel_last_y = get_offset_val(self.wasd_wheel_last_y, wasd_wheel_target_y)
+					self.handel_wheel_action(Wheel_action_move, self.wasd_wheel_last_x + +rand_offset(), self.wasd_wheel_last_y + +rand_offset())
+				}
 			}
+			if self.wheel_id != -1 && self.wasd_wheel_released && self.ls_wheel_released {
+				self.handel_wheel_action(Wheel_action_release, -1, -1) //wheel当前按下 且两个标记都释放 则释放
+			}
+			time.Sleep(time.Duration(4) * time.Millisecond)
 		}
-		if self.wheel_id != -1 && self.wasd_wheel_released && self.ls_wheel_released {
-			self.handel_wheel_action(Wheel_action_release, -1, -1) //wheel当前按下 且两个标记都释放 则释放
-		}
-		//sleep
-		time.Sleep(time.Duration(4) * time.Millisecond)
 	}
 }
 
@@ -521,9 +546,12 @@ func (self *TouchHandler) handel_key_up_down(key_name string, up_down int32, dev
 		}
 	}
 
-	if key_name == self.KEYBOARD_SWITCH_KEY_NAME && up_down == UP {
-		self.map_on = !self.map_on
-		fmt.Printf("切换模式\n")
+	if key_name == self.KEYBOARD_SWITCH_KEY_NAME { //屏蔽切换键
+		if up_down == UP {
+			self.map_on = !self.map_on
+			fmt.Printf("切换模式\n")
+		}
+		return
 	}
 
 	if self.map_on {
@@ -673,37 +701,40 @@ func (self *TouchHandler) mix_touch(touch_events chan *event_pack) {
 		copy(copy_pos_s, pos_s)
 		copy_id_stause := make([]bool, 10)
 		copy(copy_id_stause, id_stause)
-
-		event_pack := <-touch_events
-
-		for _, event := range event_pack.events {
-			switch event.Code {
-			case ABS_MT_POSITION_X:
-				pos_s[last_id] = []int32{event.Value, pos_s[last_id][1]}
-			case ABS_MT_POSITION_Y:
-				pos_s[last_id] = []int32{pos_s[last_id][0], event.Value}
-			case ABS_MT_TRACKING_ID:
-				if event.Value == -1 {
-					id_stause[last_id] = false
-				} else {
-					id_stause[last_id] = true
-				}
-			case ABS_MT_SLOT:
-				last_id = event.Value
-			}
-		}
-		for i := 0; i < 10; i++ {
-			if copy_id_stause[i] != id_stause[i] {
-				if id_stause[i] { //false -> true 申请
-					id_2_vid[i] = self.touch_require(pos_s[i][0], pos_s[i][1])
-				} else {
-					self.touch_release(id_2_vid[i])
-				}
-			} else {
-				if pos_s[i][0] != copy_pos_s[i][0] || pos_s[i][1] != copy_pos_s[i][1] {
-					self.touch_move(id_2_vid[i], pos_s[i][0], pos_s[i][1])
+		select {
+		case <-global_close_signal:
+			return
+		case event_pack := <-touch_events:
+			for _, event := range event_pack.events {
+				switch event.Code {
+				case ABS_MT_POSITION_X:
+					pos_s[last_id] = []int32{event.Value, pos_s[last_id][1]}
+				case ABS_MT_POSITION_Y:
+					pos_s[last_id] = []int32{pos_s[last_id][0], event.Value}
+				case ABS_MT_TRACKING_ID:
+					if event.Value == -1 {
+						id_stause[last_id] = false
+					} else {
+						id_stause[last_id] = true
+					}
+				case ABS_MT_SLOT:
+					last_id = event.Value
 				}
 			}
+			for i := 0; i < 10; i++ {
+				if copy_id_stause[i] != id_stause[i] {
+					if id_stause[i] { //false -> true 申请
+						id_2_vid[i] = self.touch_require(pos_s[i][0], pos_s[i][1])
+					} else {
+						self.touch_release(id_2_vid[i])
+					}
+				} else {
+					if pos_s[i][0] != copy_pos_s[i][0] || pos_s[i][1] != copy_pos_s[i][1] {
+						self.touch_move(id_2_vid[i], pos_s[i][0], pos_s[i][1])
+					}
+				}
+			}
+
 		}
 	}
 }
@@ -716,32 +747,34 @@ func (self *TouchHandler) handel_event() {
 		var y int32 = 0
 		var HWhell int32 = 0
 		var Wheel int32 = 0
-		event_pack := <-self.events
-		for _, event := range event_pack.events {
-			switch event.Type {
-			case evdev.EventKey:
-				key_events = append(key_events, event)
-			case evdev.EventAbsolute:
-				abs_events = append(abs_events, event)
-			case evdev.EventRelative:
-				switch event.Code {
-				case uint16(evdev.RelativeX):
-					x = event.Value
-				case uint16(evdev.RelativeY):
-					y = event.Value
-				case uint16(evdev.RelativeHWheel):
-					HWhell = event.Value
-				case uint16(evdev.RelativeWheel):
-					Wheel = event.Value
+		select {
+		case <-global_close_signal:
+			return
+		case event_pack := <-self.events:
+			for _, event := range event_pack.events {
+				switch event.Type {
+				case evdev.EventKey:
+					key_events = append(key_events, event)
+				case evdev.EventAbsolute:
+					abs_events = append(abs_events, event)
+				case evdev.EventRelative:
+					switch event.Code {
+					case uint16(evdev.RelativeX):
+						x = event.Value
+					case uint16(evdev.RelativeY):
+						y = event.Value
+					case uint16(evdev.RelativeHWheel):
+						HWhell = event.Value
+					case uint16(evdev.RelativeWheel):
+						Wheel = event.Value
+					}
 				}
 			}
+			self.handel_rel_event(x, y, HWhell, Wheel)
+			self.handel_key_events(key_events, event_pack.dev_name)
+			self.handel_abs_events(abs_events, event_pack.dev_name)
 		}
-		self.handel_rel_event(x, y, HWhell, Wheel)
-		self.handel_key_events(key_events, event_pack.dev_name)
-		self.handel_abs_events(abs_events, event_pack.dev_name)
 	}
 }
 
-func (self *TouchHandler) stop() {
-
-}
+// func NewTouchHandler()
