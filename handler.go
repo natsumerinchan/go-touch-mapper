@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -268,25 +269,35 @@ func (self *TouchHandler) handel_view_move(offset_x int32, offset_y int32) { //�
 	self.view_lock.Lock()
 	self.auto_release_view_count = 0
 	if self.view_id == -1 {
-		self.view_id = self.touch_require(self.view_init_x, self.view_init_y)
 		self.view_current_x = self.view_init_x + rand_offset()
 		self.view_current_y = self.view_init_y + rand_offset()
+		self.view_id = self.touch_require(self.view_current_x, self.view_current_y)
 	}
 	self.view_current_x -= offset_y * self.view_speed_y //用的时直接写event坐标系
 	self.view_current_y += offset_x * self.view_speed_x
 	if self.view_range_limited { //有界 or 无界 即 使用eventX 还是 inputManager
-		if self.view_current_x < 200 || self.view_current_x > (self.screen_x-200) || self.view_current_y < 200 || self.view_current_y > (self.screen_y-200) {
+		if self.view_current_x <= 0 || self.view_current_x >= self.screen_x || self.view_current_y <= 0 || self.view_current_y >= self.screen_y {
+			//测试了两个软件
+			//都可以同时两个触摸点控制视角
+			//所以这里超出范围时候逻辑修改了
+			//原本的点的目标超出了 但是暂时不释放
+			//此时去申请一个新的触控点来执行本次滑动操作
+			//然后再将原本的触控点释放 并将新的触控点设置为当前控制用的触控点
+			//即从原本的瞬间松开再按下 改为了按下新的再松开
+			self.view_current_x = self.view_init_x + rand_offset()
+			self.view_current_y = self.view_init_y + rand_offset()
+			tmp_view_id := self.touch_require(self.view_current_x, self.view_current_y)
+			self.view_current_x -= offset_y * self.view_speed_y //用的时直接写event坐标系
+			self.view_current_y += offset_x * self.view_speed_x
+			self.touch_move(tmp_view_id, self.view_current_x, self.view_current_y)
 			self.touch_release(self.view_id)
-			// time.Sleep(time.Duration(1) * time.Millisecond)
-			// rand_x, rand_y := rand_offset(), rand_offset()
-			rand_x, rand_y := int32(0), int32(0)
-			self.view_id = self.touch_require(self.view_init_x+rand_x, self.view_init_y+rand_y)
-			self.view_current_x = self.view_init_x + rand_x - offset_y*self.view_speed_y
-			self.view_current_y = self.view_init_y + rand_y + offset_x*self.view_speed_x
+			self.view_id = tmp_view_id
+		} else {
+			self.touch_move(self.view_id, self.view_current_x, self.view_current_y)
 		}
+	} else {
+		self.touch_move(self.view_id, self.view_current_x, self.view_current_y)
 	}
-	self.touch_move(self.view_id, self.view_current_x, self.view_current_y)
-
 	self.view_lock.Unlock()
 }
 
@@ -299,7 +310,7 @@ func (self *TouchHandler) auto_handel_view_release() { //视角释放
 			self.view_lock.Lock()
 			if self.view_id != -1 {
 				self.auto_release_view_count += 1
-				if self.auto_release_view_count > 10 { //一秒钟不动 则释放
+				if self.auto_release_view_count > 10 { //200ms不动 则释放
 					self.auto_release_view_count = 0
 					self.view_id = self.touch_release(self.view_id)
 				}
@@ -329,7 +340,6 @@ func (self *TouchHandler) get_wasd_now_target() (int32, int32) { //根据wasd当
 	// self.wasd_up_down_stause
 	var x int32 = 0
 	var y int32 = 0
-
 	if self.wasd_up_down_stause[0] {
 		y += 1
 	}
@@ -343,26 +353,26 @@ func (self *TouchHandler) get_wasd_now_target() (int32, int32) { //根据wasd当
 		x += 1
 	}
 	//反转XY
-	return self.wheel_init_x + y*self.wheel_range, self.wheel_init_y + x*self.wheel_range
+	if x*y == 0 {
+		return self.wheel_init_x + y*self.wheel_range, self.wheel_init_y + x*self.wheel_range
+	} else {
+		return self.wheel_init_x + y*self.wheel_range*707/1000, self.wheel_init_y + x*self.wheel_range*707/1000
+	}
 }
 
-func get_offset_val(now, target int32) int32 {
-	//传入当前 目标 返回修改后的当前值
-	if now == target {
-		return now
-	}
-	var step int32 = 40
-	if now < target {
-		if now+step > target {
-			return target
-		} else {
-			return now + step
-		}
+const wheel_step_val = int32(60)
+
+func update_wheel_xy(last_x, last_y, target_x, target_y int32) (int32, int32) {
+	if last_x == target_x && last_y == target_y {
+		return last_x, last_y
 	} else {
-		if now-step < target {
-			return target
+		x_rest := target_x - last_x
+		y_rest := target_y - last_y
+		total_rest := int32(math.Sqrt(float64(x_rest*x_rest + y_rest*y_rest)))
+		if total_rest <= wheel_step_val {
+			return target_x, target_y
 		} else {
-			return now - step
+			return last_x + x_rest*wheel_step_val/total_rest, last_y + y_rest*wheel_step_val/total_rest
 		}
 	}
 }
@@ -381,9 +391,9 @@ func (self *TouchHandler) loop_handel_wasd_wheel() { //循环处理wasd映射轮
 			} else {
 				self.wasd_wheel_released = false
 				if self.wasd_wheel_last_x != wasd_wheel_target_x || self.wasd_wheel_last_y != wasd_wheel_target_y {
-					self.wasd_wheel_last_x = get_offset_val(self.wasd_wheel_last_x, wasd_wheel_target_x)
-					self.wasd_wheel_last_y = get_offset_val(self.wasd_wheel_last_y, wasd_wheel_target_y)
-					self.handel_wheel_action(Wheel_action_move, self.wasd_wheel_last_x + +rand_offset(), self.wasd_wheel_last_y + +rand_offset())
+					self.wasd_wheel_last_x, self.wasd_wheel_last_y = update_wheel_xy(self.wasd_wheel_last_x, self.wasd_wheel_last_y, wasd_wheel_target_x, wasd_wheel_target_y)
+					self.handel_wheel_action(Wheel_action_move, self.wasd_wheel_last_x+rand_offset(), self.wasd_wheel_last_y+rand_offset())
+					// self.handel_wheel_action(Wheel_action_move, self.wasd_wheel_last_x, self.wasd_wheel_last_y)
 				}
 			}
 			if self.wheel_id != -1 && self.wasd_wheel_released && self.ls_wheel_released {
