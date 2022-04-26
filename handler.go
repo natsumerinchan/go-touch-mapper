@@ -273,8 +273,8 @@ func (self *TouchHandler) handel_view_move(offset_x int32, offset_y int32) { //�
 		self.view_current_y = self.view_init_y + rand_offset()
 		self.view_id = self.touch_require(self.view_current_x, self.view_current_y)
 	}
-	self.view_current_x -= offset_y * self.view_speed_y //用的时直接写event坐标系
-	self.view_current_y += offset_x * self.view_speed_x
+	self.view_current_x += offset_x * self.view_speed_x
+	self.view_current_y += offset_y * self.view_speed_y
 	if self.view_range_limited { //有界 or 无界 即 使用eventX 还是 inputManager
 		if self.view_current_x <= 0 || self.view_current_x >= self.screen_x || self.view_current_y <= 0 || self.view_current_y >= self.screen_y {
 			//测试了两个软件
@@ -287,8 +287,8 @@ func (self *TouchHandler) handel_view_move(offset_x int32, offset_y int32) { //�
 			self.view_current_x = self.view_init_x + rand_offset()
 			self.view_current_y = self.view_init_y + rand_offset()
 			tmp_view_id := self.touch_require(self.view_current_x, self.view_current_y)
-			self.view_current_x -= offset_y * self.view_speed_y //用的时直接写event坐标系
-			self.view_current_y += offset_x * self.view_speed_x
+			self.view_current_x += offset_x * self.view_speed_x //用的时直接写event坐标系
+			self.view_current_y += offset_y * self.view_speed_y
 			self.touch_move(tmp_view_id, self.view_current_x, self.view_current_y)
 			self.touch_release(self.view_id)
 			self.view_id = tmp_view_id
@@ -341,10 +341,10 @@ func (self *TouchHandler) get_wasd_now_target() (int32, int32) { //根据wasd当
 	var x int32 = 0
 	var y int32 = 0
 	if self.wasd_up_down_stause[0] {
-		y += 1
+		y -= 1
 	}
 	if self.wasd_up_down_stause[2] {
-		y -= 1
+		y += 1
 	}
 	if self.wasd_up_down_stause[1] {
 		x -= 1
@@ -352,11 +352,11 @@ func (self *TouchHandler) get_wasd_now_target() (int32, int32) { //根据wasd当
 	if self.wasd_up_down_stause[3] {
 		x += 1
 	}
-	//反转XY
+
 	if x*y == 0 {
-		return self.wheel_init_x + y*self.wheel_range, self.wheel_init_y + x*self.wheel_range
+		return self.wheel_init_x + x*self.wheel_range, self.wheel_init_y + y*self.wheel_range
 	} else {
-		return self.wheel_init_x + y*self.wheel_range*707/1000, self.wheel_init_y + x*self.wheel_range*707/1000
+		return self.wheel_init_x + x*self.wheel_range*707/1000, self.wheel_init_y + y*self.wheel_range*707/1000
 	}
 }
 

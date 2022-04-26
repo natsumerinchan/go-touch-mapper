@@ -207,7 +207,7 @@ func get_wm_size() (int, int) {
 	return width, height
 }
 
-func handel_touch_using_vTouch(control_ch chan *touch_control_pack) {
+func handel_touch_using_vTouch(control_ch chan *touch_control_pack, direction *string) {
 	sizeofEvent := int(unsafe.Sizeof(evdev.Event{}))
 	sendEvents := func(fd *os.File, events []*evdev.Event) {
 		buf := make([]byte, sizeofEvent*len(events))
@@ -217,6 +217,20 @@ func handel_touch_using_vTouch(control_ch chan *touch_control_pack) {
 		n, err := fd.Write(buf)
 		if err != nil {
 			fmt.Println(err, n)
+		}
+	}
+	rot_xy := func(pack *touch_control_pack) (int32, int32) { //根据方向旋转坐标
+		switch *direction {
+		case "d":
+			return pack.x, pack.y
+		case "u":
+			return pack.screen_x - pack.x, pack.screen_y - pack.y
+		case "l":
+			return pack.screen_y - pack.y, pack.x
+		case "r":
+			return pack.y, pack.screen_x - pack.x
+		default:
+			return pack.x, pack.y
 		}
 	}
 	ev_sync := evdev.Event{Type: EV_SYN, Code: 0, Value: 0}
@@ -243,8 +257,9 @@ func handel_touch_using_vTouch(control_ch chan *touch_control_pack) {
 				if count == 1 {
 					write_events = append(write_events, &evdev.Event{Type: EV_KEY, Code: BTN_TOUCH, Value: DOWN})
 				}
-				write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_X, Value: control_data.x})
-				write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_Y, Value: control_data.y})
+				x, y := rot_xy(control_data)
+				write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_X, Value: x})
+				write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_Y, Value: y})
 				write_events = append(write_events, &ev_sync)
 				sendEvents(fd, write_events)
 			} else if control_data.action == TouchActionRelease {
@@ -264,8 +279,9 @@ func handel_touch_using_vTouch(control_ch chan *touch_control_pack) {
 					last_id = control_data.id
 					write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_SLOT, Value: control_data.id})
 				}
-				write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_X, Value: control_data.x})
-				write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_Y, Value: control_data.y})
+				x, y := rot_xy(control_data)
+				write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_X, Value: x})
+				write_events = append(write_events, &evdev.Event{Type: EV_ABS, Code: ABS_MT_POSITION_Y, Value: y})
 				write_events = append(write_events, &ev_sync)
 				sendEvents(fd, write_events)
 			}
