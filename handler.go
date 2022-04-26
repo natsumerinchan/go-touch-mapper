@@ -547,7 +547,9 @@ func (self *TouchHandler) handel_key_up_down(key_name string, up_down int32, dev
 		return
 	}
 	if key_name == "BTN_SELECT" {
-		self.BTN_SELECT_UP_DOWN = up_down
+		if up_down == DOWN || up_down == UP {
+			self.BTN_SELECT_UP_DOWN = up_down
+		}
 	}
 	if self.BTN_SELECT_UP_DOWN == DOWN {
 		if key_name == "BTN_RS" && up_down == UP {
@@ -569,7 +571,7 @@ func (self *TouchHandler) handel_key_up_down(key_name string, up_down int32, dev
 			if self.wheel_wasd[i] == key_name {
 				if up_down == DOWN {
 					self.wasd_up_down_stause[i] = true
-				} else {
+				} else if up_down == UP {
 					self.wasd_up_down_stause[i] = false
 				}
 				return
