@@ -7,7 +7,9 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/exec"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -129,9 +131,36 @@ func udp_event_injector(ch chan *event_pack, port int) {
 }
 
 var global_close_signal = make(chan bool) //仅会在程序退出时关闭  不用于其他用途
+var global_device_orientation int32 = 0
+
+func get_device_orientation() int32 {
+	cmd := "dumpsys input | grep -i surfaceorientation | awk '{ print $2 }'"
+	out, err := exec.Command("sh", "-c", cmd).Output()
+	if err != nil {
+		return 0
+	} else {
+		result, err := strconv.Atoi(string(out[0:1]))
+		if err != nil {
+			return 0
+		} else {
+			return int32(result)
+		}
+	}
+}
+
+func listen_device_orientation() {
+	for {
+		select {
+		case <-global_close_signal:
+			return
+		default:
+			global_device_orientation = get_device_orientation()
+			time.Sleep(time.Duration(1) * time.Second)
+		}
+	}
+}
 
 func main() {
-
 	parser := argparse.NewParser("go-touch-mappeer", " ")
 	var eventList *[]int = parser.IntList("e", "event", &argparse.Options{
 		Required: false,
@@ -165,12 +194,6 @@ func main() {
 		Default:  61069,
 	})
 
-	var direction *string = parser.String("d", "direction", &argparse.Options{
-		Required: false,
-		Help:     "设备方向(l|d|r|u),代表该方向在底部,默认l即左边向下,如果-i则无效",
-		Default:  "l",
-	})
-
 	err := parser.Parse(os.Args)
 	if err != nil {
 		fmt.Print(parser.Usage(err))
@@ -182,18 +205,20 @@ func main() {
 	u_input_control_ch := make(chan *u_input_control_pack)
 	touch_event_ch := make(chan *event_pack)
 
-	*touchIndex = -1 // 暂时取消触屏混合的支持 在坐标系转换结束后再重新设计
+	// *touchIndex = -1 // 暂时取消触屏混合的支持 在坐标系转换结束后再重新设计
 	if *touchIndex != -1 {
 		fmt.Printf("启用触屏混合 : event%d\n", *touchIndex)
 		touch_event_ch = create_event_reader([]int{*touchIndex})
 	}
+
+	go listen_device_orientation()
 
 	go handel_u_input_mouse_keyboard(u_input_control_ch)
 	if *usingInputManager {
 		fmt.Println("触屏控制将使用inputManager处理")
 		go handel_touch_using_input_manager(touch_control_ch) //先统一坐标系
 	} else {
-		go handel_touch_using_vTouch(touch_control_ch, direction) //然后再处理转换旋转后的坐标
+		go handel_touch_using_vTouch(touch_control_ch) //然后再处理转换旋转后的坐标
 	}
 
 	touchHandler := InitTouchHandler(*configPath, events_ch, touch_control_ch, u_input_control_ch, !*usingInputManager)

@@ -708,6 +708,22 @@ func (self *TouchHandler) mix_touch(touch_events chan *event_pack) {
 	for i := 0; i < 10; i++ {
 		id_stause[i] = false
 	}
+
+	translate_xy := func(x, y int32) (int32, int32) { //根据设备方向 将eventX的坐标系转换为标准坐标系
+		switch global_device_orientation { //
+		case 0: //normal
+			return x, y
+		case 1: //left side down
+			return y, self.screen_y - x
+		case 2: //up side down
+			return self.screen_y - x, self.screen_x - y
+		case 3: //right side down
+			return self.screen_x - y, x
+		default:
+			return x, y
+		}
+	}
+
 	for {
 		copy_pos_s := make([][]int32, 10)
 		copy(copy_pos_s, pos_s)
@@ -736,13 +752,15 @@ func (self *TouchHandler) mix_touch(touch_events chan *event_pack) {
 			for i := 0; i < 10; i++ {
 				if copy_id_stause[i] != id_stause[i] {
 					if id_stause[i] { //false -> true 申请
-						id_2_vid[i] = self.touch_require(pos_s[i][0], pos_s[i][1])
+						x, y := translate_xy(pos_s[i][0], pos_s[i][1])
+						id_2_vid[i] = self.touch_require(x, y)
 					} else {
 						self.touch_release(id_2_vid[i])
 					}
 				} else {
 					if pos_s[i][0] != copy_pos_s[i][0] || pos_s[i][1] != copy_pos_s[i][1] {
-						self.touch_move(id_2_vid[i], pos_s[i][0], pos_s[i][1])
+						x, y := translate_xy(pos_s[i][0], pos_s[i][1])
+						self.touch_move(id_2_vid[i], x, y)
 					}
 				}
 			}
@@ -788,5 +806,3 @@ func (self *TouchHandler) handel_event() {
 		}
 	}
 }
-
-// func NewTouchHandler()

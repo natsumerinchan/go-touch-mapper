@@ -18,8 +18,8 @@
     },
     "WHEEL": {
         "POS": [
-            250,
-            1670
+            300,
+            800
         ],
         "RANGE": 200,
         "WASD": [
@@ -29,7 +29,7 @@
             "KEY_D"
         ]
     },
-    "KEY_MAPS": {
+  "KEY_MAPS": {
         "BTN_RT_2": {
             "TYPE": "PRESS",
             "POS": [
@@ -131,85 +131,85 @@
         "KEY_Q": {
             "TYPE": "PRESS",
             "POS": [
-                1552,
-                1181
+                962,
+                893
             ]
         },
         "KEY_1": {
             "TYPE": "PRESS",
             "POS": [
-                2857,
-                195
+                1787,
+                138
             ]
         },
         "KEY_2": {
             "TYPE": "PRESS",
             "POS": [
-                2850,
-                320
+                1787,
+                245
             ]
         },
         "KEY_3": {
             "TYPE": "PRESS",
             "POS": [
-                2845,
-                477
+                1787,
+                355
             ]
         },
         "BTN_LEFT": {
             "TYPE": "PRESS",
             "POS": [
-                154,
-                716
+                136,
+                554
             ]
         },
         "BTN_RIGHT": {
             "TYPE": "PRESS",
             "POS": [
-                2457,
-                1074
+                1426,
+                835
             ]
         },
         "KEY_E": {
             "TYPE": "PRESS",
             "POS": [
-                2485,
-                1067
+                1426,
+                1835
             ]
         },
         "KEY_R": {
             "TYPE": "PRESS",
             "POS": [
-                2491,
-                1320
+                1453,
+                996
             ]
         },
         "KEY_SPACE": {
             "TYPE": "PRESS",
             "POS": [
-                3004,
-                993
+                1838,
+                744
             ]
         },
         "KEY_LEFTSHIFT": {
             "TYPE": "PRESS",
             "POS": [
-                2759,
-                1327
+                1654,
+                1004
             ]
         },
         "KEY_C": {
             "TYPE": "PRESS",
             "POS": [
-                3011,
-                1222
+                1840,
+                927
             ]
         },
         "KEY_TAB": {
             "TYPE": "PRESS",
             "POS": [
-                1556,
-                89
+                958,
+                50
             ]
         }
     }

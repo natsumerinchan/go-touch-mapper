@@ -207,7 +207,8 @@ func get_wm_size() (int, int) {
 	return width, height
 }
 
-func handel_touch_using_vTouch(control_ch chan *touch_control_pack, direction *string) {
+func handel_touch_using_vTouch(control_ch chan *touch_control_pack) {
+
 	sizeofEvent := int(unsafe.Sizeof(evdev.Event{}))
 	sendEvents := func(fd *os.File, events []*evdev.Event) {
 		buf := make([]byte, sizeofEvent*len(events))
@@ -220,14 +221,14 @@ func handel_touch_using_vTouch(control_ch chan *touch_control_pack, direction *s
 		}
 	}
 	rot_xy := func(pack *touch_control_pack) (int32, int32) { //根据方向旋转坐标
-		switch *direction {
-		case "d":
+		switch global_device_orientation {
+		case 0:
 			return pack.x, pack.y
-		case "u":
-			return pack.screen_x - pack.x, pack.screen_y - pack.y
-		case "l":
+		case 1:
 			return pack.screen_y - pack.y, pack.x
-		case "r":
+		case 2:
+			return pack.screen_x - pack.x, pack.screen_y - pack.y
+		case 3:
 			return pack.y, pack.screen_x - pack.x
 		default:
 			return pack.x, pack.y
@@ -246,6 +247,7 @@ func handel_touch_using_vTouch(control_ch chan *touch_control_pack, direction *s
 		case <-global_close_signal:
 			return
 		case control_data := <-control_ch:
+
 			if control_data.id == -1 { //在任何正常情况下 这里是拿不到ID=-1的控制包的因此可以直接丢弃
 				continue
 			}
