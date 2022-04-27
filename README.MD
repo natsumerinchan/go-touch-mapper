@@ -65,7 +65,7 @@ joystick /dev/input/event16
 configFile SMC_JS.json 
 ```
 ```
-go-touch-mapper -t 5 -e 15 -e 19 -e 16 -c ./SMC_JS.json  
+go-touch-mapper -t 5 -e 15 -e 19 -e 16 -c configs/SMC_JS.json  
 ```
 
 ## Switch Mode
@@ -74,13 +74,13 @@ go-touch-mapper -t 5 -e 15 -e 19 -e 16 -c ./SMC_JS.json
 ## ConfigFile
 [创建映射文件工具](https://driverlin.github.io/go-touch-mapper/build/)
 
-如有需要，可参照[EXAMPLE.JSON](https://github.com/DriverLin/go-touch-mapper/blob/main/EXAMPLE.JSON)手动修改配置文件
+如有需要，可参照[EXAMPLE.JSON](https://github.com/DriverLin/go-touch-mapper/blob/main/configs/EXAMPLE.JSON)手动修改配置文件
 
 左上角为原点，向右为X，向下为Y
 
 ## 远程控制
 ```
-go-touch-mapper -t 5 -e 15 -e 19 -e 16 -c ./SMC_JS.json -r
+go-touch-mapper -t 5 -e 15 -e 19 -e 16 -c configs/SMC_JS.json -r
 ```
 PC上 修改remote_control中sender("192.168.1.64:61069")为手机IP，端口默认可不修改
 
@@ -106,6 +106,6 @@ adb shell CLASSPATH=/data/local/tmp/app-debug.apk  app_process ./ com.genymobile
 ```
 
 ```
-go-touch-mapper -t 5 -e 15 -e 19 -e 16 -c ./SMC_JS.json -i
+go-touch-mapper -t 5 -e 15 -e 19 -e 16 -c configs/SMC_JS.json -i
 ```
 
