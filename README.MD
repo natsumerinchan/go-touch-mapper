@@ -15,6 +15,8 @@ chmod 777 ./go-touch-mapper
 
 root下直接运行
 ```
+wget wget https://github.com/DriverLin/go-touch-mapper/releases/latest/download/go-touch-mapper
+chmod 777 ./go-touch-mapper
 sudo ./go-touch-mapper -h
 ```
 
