@@ -22,6 +22,7 @@ sudo ./go-touch-mapper -h
 
 使用termux编译并运行
 ```
+pkg i golang -y
 git clone https://github.com/DriverLin/go-touch-mapper
 cd go-touch-mapper
 go build
@@ -75,6 +76,34 @@ go-touch-mapper -t 5 -e 15 -e 19 -e 16 -c ./SMC_JS.json
 
 左上角为原点，向右为X，向下为Y
 
+## 远程控制
+```
+go-touch-mapper -t 5 -e 15 -e 19 -e 16 -c ./SMC_JS.json -r
+```
+PC上 修改remote_control中sender("192.168.1.64:61069")为手机IP，端口默认可不修改
 
+运行
 
+``` 
+python remote_control.py 
+```
+
+## [InputManager](https://github.com/DriverLin/inputManager-touch-interface)
+### 说明
+由Scrcpy修改而来，在ADB下使用app_process启动
+
+通过UDP与主程序通信控制触屏
+
+可在多显示器情况下指定displayID
+
+### 使用
+
+```
+adb push inputManager/app-debug.apk /data/local/tmp/
+adb shell CLASSPATH=/data/local/tmp/app-debug.apk  app_process ./ com.genymobile.scrcpy.Server 0
+```
+
+```
+go-touch-mapper -t 5 -e 15 -e 19 -e 16 -c ./SMC_JS.json -i
+```
 
