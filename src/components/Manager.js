@@ -192,7 +192,7 @@ export default function Manager() {
         const screenWidth = settings.screen.size[0]
         const screenHeight = settings.screen.size[1]
         const translateX = (x) => Math.round(x * screenWidth / showWidth)
-        const translateY = (y) => Math.round(screenHeight - y * screenHeight / showHeight)
+        const translateY = (y) => Math.round(y * screenHeight / showHeight)
         const translateKeyName = (jskey) => keyNameMap.default[jskey]
         const KEY_MAPS = {}
         for (let keyData of keyMap) {
@@ -200,16 +200,16 @@ export default function Manager() {
                 KEY_MAPS[translateKeyName(keyData.key)] = {
                     "TYPE": "PRESS",
                     "POS": [
-                        translateY(keyData.y),
-                        translateX(keyData.x)
+                        translateY(keyData.x),
+                        translateX(keyData.y)
                     ]
                 }
             } else if (keyData.type === "click") {
                 KEY_MAPS[translateKeyName(keyData.key)] = {
                     "TYPE": "CLICK",
                     "POS": [
-                        translateY(keyData.y),
-                        translateX(keyData.x)
+                        translateY(keyData.x),
+                        translateX(keyData.y)
                     ],
                     "INTERVAL": keyData.interval
                 }
@@ -217,21 +217,21 @@ export default function Manager() {
                 KEY_MAPS[translateKeyName(keyData.key)] = {
                     "TYPE": "AUTO_FIRE",
                     "POS": [
-                        translateY(keyData.y),
-                        translateX(keyData.x)
+                        translateY(keyData.x),
+                        translateX(keyData.y)
                     ],
                     "INTERVAL": keyData.interval
                 }
             } else if (keyData.type === "drag") {
                 KEY_MAPS[translateKeyName(keyData.key)] = {
                     "TYPE": "DRAG",
-                    "POS_S": keyData.pos_s.map(pos => [translateY(pos[1]), translateX(pos[0])]),
+                    "POS_S": keyData.pos_s.map(pos => [translateY(pos[0]), translateX(pos[1])]),
                     "INTERVAL": keyData.interval
                 }
             } else if (keyData.type === "mult_press") {
                 KEY_MAPS[translateKeyName(keyData.key)] = {
                     "TYPE": "MULT_PRESS",
-                    "POS_S": keyData.pos_s.map(pos => [translateY(pos[1]), translateX(pos[0])]),
+                    "POS_S": keyData.pos_s.map(pos => [translateY(pos[0]), translateX(pos[1])]),
                 }
             }
 
@@ -239,25 +239,25 @@ export default function Manager() {
         const exportResult = {
             "SCREEN": {
                 "SIZE": [
-                    settings.screen.size[1],
-                    settings.screen.size[0]
+                    settings.screen.size[0],
+                    settings.screen.size[1]
                 ]
             },
             "MOUSE": {
                 "SWITCH_KEY": "KEY_GRAVE",
                 "POS": [
-                    settings.mouse.pos[1],
-                    settings.mouse.pos[0]
+                    settings.mouse.pos[0],
+                    settings.mouse.pos[1]
                 ],
                 "SPEED": [
-                    settings.mouse.speed[1],
-                    settings.mouse.speed[0]
+                    settings.mouse.speed[0],
+                    settings.mouse.speed[1]
                 ]
             },
             "WHEEL": {
                 "POS": [
-                    translateY(settings.wheel.pos[1]),
-                    translateX(settings.wheel.pos[0])
+                    translateY(settings.wheel.pos[0]),
+                    translateX(settings.wheel.pos[1])
                 ],
                 "RANGE": translateX(settings.wheel.range),
                 "WASD": [
@@ -285,7 +285,7 @@ export default function Manager() {
                 const copy = { ...settings }
                 if (copy.screen.size[0] !== sc.width || copy.screen.size[1] !== sc.height) {
                     copy.screen.size = [sc.width, sc.height]
-                    copy.mouse.pos = [sc.width / 2 + 580, sc.height / 2]
+                    copy.mouse.pos = [sc.width / 2 + 100, sc.height / 2]
                     setSettings(copy)
                 }
 
@@ -396,6 +396,7 @@ export default function Manager() {
         reads.readAsDataURL(document.getElementById('fileInput').files[0]);
         reads.onload = function (e) {
             setImgUrl(this.result);
+            document.body.requestFullscreen();
         };
     }
 
@@ -527,10 +528,7 @@ export default function Manager() {
             <a> ms</a>
         </div>
     }
-
-
-
-
+    
     const Type_drag = (props) => {
         const waitingForClick = useRef(false)
         const [addButtonDisabled, setAddButtonDisabled] = useState(false)
@@ -690,7 +688,7 @@ export default function Manager() {
             direction="column"
             padding="10px"
         >
-            <Grid container
+            <Grid 
                 container
                 direction="row"
                 justifyContent="flex-start"
