@@ -1,5 +1,7 @@
 # 安卓触屏映射工具
 
+将手柄,键鼠操作映射为触屏事件
+
 ## Run
 
 从[releases](https://github.com/DriverLin/go-touch-mapper/releases)下载最新版本的 go-touch-mapper 二进制文件
