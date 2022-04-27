@@ -685,7 +685,7 @@ func (self *TouchHandler) handel_abs_events(events []*evdev.Event, dev_name stri
 						}
 					} else {
 						self.ls_wheel_released = false
-						target_x := self.wheel_init_x - int32(float64(self.wheel_range)*2*(ls_x-0.5)) //注意这里的X和Y是相反的
+						target_x := self.wheel_init_x + int32(float64(self.wheel_range)*2*(ls_x-0.5)) //注意这里的X和Y是相反的
 						target_y := self.wheel_init_y + int32(float64(self.wheel_range)*2*(ls_y-0.5))
 						self.handel_wheel_action(Wheel_action_move, target_x, target_y)
 					}
