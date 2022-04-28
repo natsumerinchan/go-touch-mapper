@@ -30,104 +30,6 @@
         ]
     },
   "KEY_MAPS": {
-        "BTN_RT_2": {
-            "TYPE": "PRESS",
-            "POS": [
-                154,
-                729
-            ]
-        },
-        "BTN_LT_2": {
-            "TYPE": "PRESS",
-            "POS": [
-                2450,
-                1059
-            ]
-        },
-        "BTN_X": {
-            "TYPE": "PRESS",
-            "POS": [
-                2496,
-                1324
-            ]
-        },
-        "BTN_LB": {
-            "TYPE": "PRESS",
-            "POS": [
-                3004,
-                979
-            ]
-        },
-        "BTN_RB": {
-            "TYPE": "PRESS",
-            "POS": [
-                2761,
-                1331
-            ]
-        },
-        "BTN_DPAD_DOWN": {
-            "TYPE": "PRESS",
-            "POS": [
-                1552,
-                1179
-            ]
-        },
-        "BTN_DPAD_LEFT": {
-            "TYPE": "PRESS",
-            "POS": [
-                2816,
-                164
-            ]
-        },
-        "BTN_DPAD_UP": {
-            "TYPE": "PRESS",
-            "POS": [
-                2816,
-                322
-            ]
-        },
-        "BTN_DPAD_RIGHT": {
-            "TYPE": "PRESS",
-            "POS": [
-                2818,
-                466
-            ]
-        },
-        "BTN_A": {
-            "TYPE": "PRESS",
-            "POS": [
-                3022,
-                1008
-            ]
-        },
-        "BTN_B": {
-            "TYPE": "PRESS",
-            "POS": [
-                2730,
-                1324
-            ]
-        },
-        "BTN_LS": {
-            "TYPE": "PRESS",
-            "POS": [
-                3009,
-                1227
-            ]
-        },
-        "BTN_RS": {
-            "TYPE": "PRESS",
-            "POS": [
-                2475,
-                1319
-            ]
-        },
-        "BTN_SELECT": {
-            "TYPE": "PRESS",
-            "POS": [
-                1523,
-                64
-            ]
-        },
         "KEY_Q": {
             "TYPE": "PRESS",
             "POS": [
@@ -210,6 +112,61 @@
             "POS": [
                 958,
                 50
+            ]
+        },
+        "KEY_F": {
+            "TYPE": "PRESS",
+            "POS": [
+                1838,
+                392
+            ]
+        },
+        "REL_WHEEL_UP": {
+            "TYPE": "DRAG",
+            "POS_S": [
+                [
+                    553,
+                    769
+                ],
+                [
+                    501,
+                    652
+                ],
+                [
+                    497,
+                    458
+                ],
+                [
+                    560,
+                    304
+                ]
+            ],
+            "INTERVAL": [
+                18
+            ]
+        },
+        "REL_WHEEL_DOWN": {
+            "TYPE": "DRAG",
+            "POS_S": [
+                [
+                    558,
+                    306
+                ],
+                [
+                    497,
+                    458
+                ],
+                [
+                    502,
+                    659
+                ],
+                [
+                    555,
+                    771
+                ]
+            ],
+            "INTERVAL": [
+                18
             ]
         }
     }

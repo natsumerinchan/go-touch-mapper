@@ -412,14 +412,31 @@ func (self *TouchHandler) handel_rel_event(x int32, y int32, HWhell int32, Wheel
 			self.u_input_control(UInput_mouse_move, x, y)
 		}
 	}
+
+	quick_click := func(keyname string) {
+		self.handel_key_up_down(keyname, DOWN, "MOUSE_WHEEL")
+		time.Sleep(time.Duration(50) * time.Millisecond)
+		self.handel_key_up_down(keyname, UP, "MOUSE_WHEEL")
+	}
+
 	if HWhell != 0 {
 		if self.map_on {
+			if HWhell > 0 {
+				go quick_click("REL_HWHEEL_UP")
+			} else if HWhell < 0 {
+				go quick_click("REL_HWHEEL_DOWN")
+			}
 		} else {
 			self.u_input_control(UInput_mouse_wheel, REL_HWHEEL, HWhell)
 		}
 	}
 	if Wheel != 0 {
 		if self.map_on {
+			if Wheel > 0 {
+				go quick_click("REL_WHEEL_UP") //纵向滚轮向上
+			} else if Wheel < 0 {
+				go quick_click("REL_WHEEL_DOWN") //纵向滚轮向下
+			}
 		} else {
 			self.u_input_control(UInput_mouse_wheel, REL_WHEEL, Wheel)
 		}

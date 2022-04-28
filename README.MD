@@ -80,7 +80,21 @@ go-touch-mapper -t 5 -e 15 -e 19 -e 16 -c configs/SMC_JS.json
 
 左上角为原点，向右为X，向下为Y
 
-## 远程控制
+## Joystick
+joystickInfos文件夹下json文件为手柄配置文件
+
+按照按键位置统一为XBOX手柄按键
+
+扳机键按照力度映射为5个等级的按键 BTN_LT_1 ... BTN_LT_5
+
+没有线性扳机的手柄例如 Switch Pro controller 只有 BTN_LT 和 BTN_RT
+
+### 手动创建手柄配置文件
+```
+go-touch-mapper --create-js-info -e 16
+```
+
+## RemoteControl
 ```
 go-touch-mapper -t 5 -e 15 -e 19 -e 16 -c configs/SMC_JS.json -r
 ```

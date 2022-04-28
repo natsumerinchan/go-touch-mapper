@@ -162,6 +162,13 @@ func listen_device_orientation() {
 
 func main() {
 	parser := argparse.NewParser("go-touch-mappeer", " ")
+
+	var create_js_info *bool = parser.Flag("", "create-js-info", &argparse.Options{
+		Required: false,
+		Default:  false,
+		Help:     "创建手柄配置文件",
+	})
+
 	var eventList *[]int = parser.IntList("e", "event", &argparse.Options{
 		Required: false,
 		Help:     "键盘或鼠标或手柄的设备号",
@@ -172,7 +179,7 @@ func main() {
 		Default:  -1,
 	})
 	var configPath *string = parser.String("c", "config", &argparse.Options{
-		Required: true,
+		Required: false,
 		Help:     "配置文件路径",
 	})
 
@@ -200,42 +207,52 @@ func main() {
 		os.Exit(1)
 	}
 
-	events_ch := create_event_reader(*eventList)
-	touch_control_ch := make(chan *touch_control_pack)
-	u_input_control_ch := make(chan *u_input_control_pack)
-	touch_event_ch := make(chan *event_pack)
-
-	// *touchIndex = -1 // 暂时取消触屏混合的支持 在坐标系转换结束后再重新设计
-	if *touchIndex != -1 {
-		fmt.Printf("启用触屏混合 : event%d\n", *touchIndex)
-		touch_event_ch = create_event_reader([]int{*touchIndex})
-	}
-
-	go listen_device_orientation()
-
-	go handel_u_input_mouse_keyboard(u_input_control_ch)
-	if *usingInputManager {
-		fmt.Println("触屏控制将使用inputManager处理")
-		go handel_touch_using_input_manager(touch_control_ch) //先统一坐标系
+	if create_js_info != nil && *create_js_info {
+		if len(*eventList) == 0 {
+			fmt.Printf("请指定设备号\n")
+		} else if len(*eventList) > 1 {
+			fmt.Printf("只能指定一个设备号\n")
+		} else {
+			create_js_info_file((*eventList)[0])
+		}
 	} else {
-		go handel_touch_using_vTouch(touch_control_ch) //然后再处理转换旋转后的坐标
+		events_ch := create_event_reader(*eventList)
+		touch_control_ch := make(chan *touch_control_pack)
+		u_input_control_ch := make(chan *u_input_control_pack)
+		touch_event_ch := make(chan *event_pack)
+
+		// *touchIndex = -1 // 暂时取消触屏混合的支持 在坐标系转换结束后再重新设计
+		if *touchIndex != -1 {
+			fmt.Printf("启用触屏混合 : event%d\n", *touchIndex)
+			touch_event_ch = create_event_reader([]int{*touchIndex})
+		}
+
+		go listen_device_orientation()
+
+		go handel_u_input_mouse_keyboard(u_input_control_ch)
+		if *usingInputManager {
+			fmt.Println("触屏控制将使用inputManager处理")
+			go handel_touch_using_input_manager(touch_control_ch) //先统一坐标系
+		} else {
+			go handel_touch_using_vTouch(touch_control_ch) //然后再处理转换旋转后的坐标
+		}
+
+		touchHandler := InitTouchHandler(*configPath, events_ch, touch_control_ch, u_input_control_ch, !*usingInputManager)
+		go touchHandler.mix_touch(touch_event_ch)
+		go touchHandler.auto_handel_view_release()
+		go touchHandler.loop_handel_wasd_wheel()
+		go touchHandler.loop_handel_rs_move()
+		go touchHandler.handel_event()
+
+		if *using_remote_control {
+			go udp_event_injector(events_ch, *udp_port)
+		}
+
+		exitChan := make(chan os.Signal)
+		signal.Notify(exitChan, os.Interrupt, os.Kill, syscall.SIGTERM)
+		<-exitChan
+		close(global_close_signal)
+		fmt.Println("已停止")
+		time.Sleep(time.Millisecond * 40)
 	}
-
-	touchHandler := InitTouchHandler(*configPath, events_ch, touch_control_ch, u_input_control_ch, !*usingInputManager)
-	go touchHandler.mix_touch(touch_event_ch)
-	go touchHandler.auto_handel_view_release()
-	go touchHandler.loop_handel_wasd_wheel()
-	go touchHandler.loop_handel_rs_move()
-	go touchHandler.handel_event()
-
-	if *using_remote_control {
-		go udp_event_injector(events_ch, *udp_port)
-	}
-
-	exitChan := make(chan os.Signal)
-	signal.Notify(exitChan, os.Interrupt, os.Kill, syscall.SIGTERM)
-	<-exitChan
-	close(global_close_signal)
-	fmt.Println("已停止")
-	time.Sleep(time.Millisecond * 40)
 }
