@@ -36,26 +36,26 @@ sudo ./go-touch-mapper -h
 ## Help
 
 ```
-usage: go-touch-mappeer [-h|--help] [-e|--event] [-t|--touch <integer>]
-                        -c|--config "<value>" [-i|--inputManager]
+usage: go-touch-mappeer [-h|--help] [--create-js-info] [-e|--event] [-t|--touch
+                        <integer>] [-c|--config "<value>"] [-i|--inputManager]
                         [-r|--remoteControl] [-p|--port <integer>]
 
 
 
 Arguments:
 
-  -h  --help           Print help information
-  -e  --event          键盘或鼠标或手柄的设备号
+  -h  --help            Print help information
+      --create-js-info  创建手柄配置文件. Default: false
+  -e  --event           键盘或鼠标或手柄的设备号
   -t  --touch
-                       触屏设备号,可选,当指定时可同时使用映射与触屏而不冲突.
-                       Default: -1
-  -c  --config         配置文件路径
-  -i  --inputManager   是否使用inputManager,需开启额外控制进程.
-                       Default: false
-  -r  --remoteControl  是否从UDP接收远程事件. Default: false
-  -p  --port           指定监听远程事件的UDP端口号,默认61069.
-                       Default: 61069
-
+                        触屏设备号,可选,当指定时可同时使用映射与触屏而不冲突.
+                        Default: -1
+  -c  --config          配置文件路径
+  -i  --inputManager    是否使用inputManager,需开启额外控制进程.
+                        Default: false
+  -r  --remoteControl   是否从UDP接收远程事件. Default: false
+  -p  --port            指定监听远程事件的UDP端口号,默认61069.
+                        Default: 61069
 ```
 ## Example
 
@@ -96,7 +96,7 @@ go-touch-mapper --create-js-info -e 16
 
 ## RemoteControl
 ```
-go-touch-mapper -t 5 -e 15 -e 19 -e 16 -c configs/SMC_JS.json -r
+go-touch-mapper -t 5 -c configs/SMC_JS.json -r
 ```
 PC上 修改remote_control中sender("192.168.1.64:61069")为手机IP，端口默认可不修改
 

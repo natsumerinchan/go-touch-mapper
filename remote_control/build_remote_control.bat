@@ -1,0 +1,1 @@
+pyinstaller -F -i Controller.ico  .\remote_control.py
