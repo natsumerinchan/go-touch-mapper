@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -39,7 +40,7 @@ type u_input_control_pack struct {
 	arg2   int32
 }
 
-func create_event_reader(indexes []int) chan *event_pack {
+func create_event_reader(indexes map[int]bool) chan *event_pack {
 	reader := func(event_reader chan *event_pack, index int) {
 		fd, err := os.OpenFile(fmt.Sprintf("/dev/input/event%d", index), os.O_RDONLY, 0)
 		if err != nil {
@@ -74,7 +75,10 @@ func create_event_reader(indexes []int) chan *event_pack {
 
 	}
 	event_reader := make(chan *event_pack)
-	for _, index := range indexes {
+	// for _, index := range indexes {
+	// 	go reader(event_reader, index)
+	// }
+	for index, _ := range indexes {
 		go reader(event_reader, index)
 	}
 	return event_reader
@@ -160,8 +164,114 @@ func listen_device_orientation() {
 	}
 }
 
+type dev_type uint8
+
+const (
+	type_mouse    = dev_type(0)
+	type_keyboard = dev_type(1)
+	type_joystick = dev_type(2)
+	type_touch    = dev_type(3)
+	type_unknown  = dev_type(4)
+)
+
+func check_dev_type(dev *evdev.Evdev) dev_type {
+	abs := dev.AbsoluteTypes()
+	key := dev.KeyTypes()
+	rel := dev.RelativeTypes()
+	_, MTPositionX := abs[evdev.AbsoluteMTPositionX]
+	_, MTPositionY := abs[evdev.AbsoluteMTPositionY]
+	_, MTSlot := abs[evdev.AbsoluteMTSlot]
+	_, MTTrackingID := abs[evdev.AbsoluteMTTrackingID]
+	if MTPositionX && MTPositionY && MTSlot && MTTrackingID {
+		return type_touch //触屏检测这几个abs类型即可
+	}
+	_, RelX := rel[evdev.RelativeX]
+	_, RelY := rel[evdev.RelativeY]
+	_, HWheel := rel[evdev.RelativeHWheel]
+	_, MouseLeft := key[evdev.BtnLeft]
+	_, MouseRight := key[evdev.BtnRight]
+	_, MouseMiddle := key[evdev.BtnMiddle]
+	if RelX && RelY && HWheel && MouseLeft && MouseRight && MouseMiddle {
+		return type_mouse //鼠标 检测XY 滚轮 左右中键
+	}
+	keyboard_keys := true
+	for i := evdev.KeyEscape; i <= evdev.KeyScrollLock; i++ {
+		_, ok := key[i]
+		keyboard_keys = keyboard_keys && ok
+	}
+	if keyboard_keys {
+		return type_keyboard //键盘 检测keycode(1-70)
+	}
+
+	axis_count := 0
+	for i := evdev.AbsoluteX; i <= evdev.AbsoluteRZ; i++ {
+		_, ok := abs[i]
+		if ok {
+			axis_count++
+		}
+	}
+	LS_RS := axis_count >= 4
+
+	key_count := 0
+	for i := evdev.BtnA; i <= evdev.BtnZ; i++ {
+		_, ok := key[i]
+		if ok {
+			key_count++
+		}
+	}
+	A_B_X_Y := key_count >= 4
+
+	if LS_RS && A_B_X_Y {
+		return type_joystick //手柄 检测LS,RS A,B,X,Y
+	}
+	return type_unknown
+}
+
+func get_possible_device_indexes() map[int]dev_type {
+	files, _ := ioutil.ReadDir("/dev/input")
+	result := make(map[int]dev_type)
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		if file.Name()[:5] != "event" {
+			continue
+		}
+		index, err := strconv.Atoi(file.Name()[5:])
+		fd, err := os.OpenFile(fmt.Sprintf("/dev/input/%s", file.Name()), os.O_RDONLY, 0)
+		if err != nil {
+			log.Fatal(err)
+		}
+		d := evdev.Open(fd)
+		defer d.Close()
+		devType := check_dev_type(d)
+		if devType == type_unknown {
+		} else {
+			result[index] = devType
+		}
+	}
+	return result
+}
+
+func get_dev_name(index int) string {
+	fd, err := os.OpenFile(fmt.Sprintf("/dev/input/event%d", index), os.O_RDONLY, 0)
+	if err != nil {
+		return "read name error"
+	}
+	d := evdev.Open(fd)
+	defer d.Close()
+	return d.Name()
+}
+
 func main() {
+
 	parser := argparse.NewParser("go-touch-mappeer", " ")
+
+	var auto_detect *bool = parser.Flag("a", "auto-detect", &argparse.Options{
+		Required: false,
+		Default:  false,
+		Help:     "自动检测设备",
+	})
 
 	var create_js_info *bool = parser.Flag("", "create-js-info", &argparse.Options{
 		Required: false,
@@ -207,24 +317,72 @@ func main() {
 		os.Exit(1)
 	}
 
-	if create_js_info != nil && *create_js_info {
-		if len(*eventList) == 0 {
-			fmt.Printf("请指定设备号\n")
-		} else if len(*eventList) > 1 {
-			fmt.Printf("只能指定一个设备号\n")
+	auto_detect_result := make(map[int]dev_type)
+	if *auto_detect {
+		auto_detect_result = get_possible_device_indexes()
+		devTypeFriendlyName := map[dev_type]string{
+			type_mouse:    "鼠标",
+			type_keyboard: "键盘",
+			type_joystick: "手柄",
+			type_touch:    "触屏",
+			type_unknown:  "未知",
+		}
+		for index, devType := range auto_detect_result {
+			devName := get_dev_name(index)
+			fmt.Printf("检测到设备 %s(/dev/input/event%d) : %s\n", devName, index, devTypeFriendlyName[devType])
+		}
+	}
+	if *create_js_info {
+		if *auto_detect {
+			js_events := make([]int, 0)
+			for index, devType := range auto_detect_result {
+				if devType == type_joystick {
+					js_events = append(js_events, index)
+				}
+			}
+			if len(js_events) == 1 {
+				create_js_info_file(js_events[0])
+			} else {
+				if len(js_events) == 0 {
+					fmt.Printf("未自动检测到手柄,请手动指定\n")
+				} else {
+					fmt.Printf("检测到多个手柄,无法使用 -a 自动检测,请使用 -e 手动指定\n")
+				}
+			}
 		} else {
-			create_js_info_file((*eventList)[0])
+			if len(*eventList) == 0 {
+				fmt.Printf("请至少指定一个设备号\n")
+			} else if len(*eventList) > 1 {
+				fmt.Printf("最多只能指定一个设备号\n")
+			} else {
+				create_js_info_file((*eventList)[0])
+			}
 		}
 	} else {
-		events_ch := create_event_reader(*eventList)
+		eventSet := make(map[int]bool)
+		for _, index := range *eventList {
+			eventSet[index] = true
+		}
+		for k, v := range auto_detect_result {
+			if v == type_joystick || v == type_keyboard || v == type_mouse {
+				eventSet[k] = true
+			}
+		}
+		events_ch := create_event_reader(eventSet)
+
 		touch_control_ch := make(chan *touch_control_pack)
 		u_input_control_ch := make(chan *u_input_control_pack)
 		touch_event_ch := make(chan *event_pack)
-
-		// *touchIndex = -1 // 暂时取消触屏混合的支持 在坐标系转换结束后再重新设计
 		if *touchIndex != -1 {
 			fmt.Printf("启用触屏混合 : event%d\n", *touchIndex)
-			touch_event_ch = create_event_reader([]int{*touchIndex})
+			touch_event_ch = create_event_reader(map[int]bool{*touchIndex: true})
+		} else {
+			for k, v := range auto_detect_result {
+				if v == type_touch {
+					fmt.Printf("启用触屏混合 : event%d\n", k)
+					touch_event_ch = create_event_reader(map[int]bool{k: true})
+				}
+			}
 		}
 
 		go listen_device_orientation()
