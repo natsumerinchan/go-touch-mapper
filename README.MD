@@ -36,15 +36,17 @@ sudo ./go-touch-mapper -h
 ## Help
 
 ```
-usage: go-touch-mappeer [-h|--help] [--create-js-info] [-e|--event] [-t|--touch
-                        <integer>] [-c|--config "<value>"] [-i|--inputManager]
-                        [-r|--remoteControl] [-p|--port <integer>]
+usage: go-touch-mappeer [-h|--help] [-a|--auto-detect] [--create-js-info]
+                        [-e|--event] [-t|--touch <integer>] [-c|--config
+                        "<value>"] [-i|--inputManager] [-r|--remoteControl]
+                        [-p|--port <integer>]
 
 
 
 Arguments:
 
   -h  --help            Print help information
+  -a  --auto-detect     自动检测设备. Default: false
       --create-js-info  创建手柄配置文件. Default: false
   -e  --event           键盘或鼠标或手柄的设备号
   -t  --touch
@@ -66,9 +68,17 @@ keyboard /dev/input/event19
 joystick /dev/input/event16
 configFile SMC_JS.json 
 ```
+
+手动指定每个设备号
 ```
 go-touch-mapper -t 5 -e 15 -e 19 -e 16 -c configs/SMC_JS.json  
 ```
+或者使用自动检测
+```
+go-touch-mapper -a -c configs/SMC_JS.json
+```
+
+
 
 ## Switch Mode
 默认键盘使用 ` 键，可在配置文件中修改，手柄为SELECT+RS组合键
@@ -91,7 +101,11 @@ joystickInfos文件夹下json文件为手柄配置文件
 
 ### 手动创建手柄配置文件
 ```
-go-touch-mapper --create-js-info -e 16
+go-touch-mapper --create-js-info -e 16 
+```
+或使用自动检测
+```
+go-touch-mapper --create-js-info -a
 ```
 
 ## RemoteControl
