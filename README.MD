@@ -77,8 +77,9 @@ go-touch-mapper -t 5 -e 15 -e 19 -e 16 -c configs/SMC_JS.json
 ```
 go-touch-mapper -a -c configs/SMC_JS.json
 ```
+大多数情况下，如果你使用了 -a 来自动检测，那么便无需输入 -e 与 -t ，程序会尝试自动检测对应的设备
 
-
+如果自动检测漏掉了某些设备，你仍然可以使用 -e 与 -t 来手动添加它们
 
 ## Switch Mode
 默认键盘使用 ` 键，可在配置文件中修改，手柄为SELECT+RS组合键
