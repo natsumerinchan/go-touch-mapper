@@ -228,16 +228,20 @@ func check_dev_type(dev *evdev.Evdev) dev_type {
 }
 
 func get_possible_device_indexes() map[int]dev_type {
+	// fmt.Printf("检测设备...\n")
 	files, _ := ioutil.ReadDir("/dev/input")
 	result := make(map[int]dev_type)
 	for _, file := range files {
 		if file.IsDir() {
 			continue
 		}
+		if len(file.Name()) <= 5 {
+			continue
+		}
 		if file.Name()[:5] != "event" {
 			continue
 		}
-		index, err := strconv.Atoi(file.Name()[5:])
+		index, _ := strconv.Atoi(file.Name()[5:])
 		fd, err := os.OpenFile(fmt.Sprintf("/dev/input/%s", file.Name()), os.O_RDONLY, 0)
 		if err != nil {
 			log.Fatal(err)
@@ -245,15 +249,14 @@ func get_possible_device_indexes() map[int]dev_type {
 		d := evdev.Open(fd)
 		defer d.Close()
 		devType := check_dev_type(d)
-		if devType == type_unknown {
-		} else {
+		if devType != type_unknown {
 			result[index] = devType
 		}
 	}
 	return result
 }
 
-func get_dev_name(index int) string {
+func get_dev_name_by_index(index int) string {
 	fd, err := os.OpenFile(fmt.Sprintf("/dev/input/event%d", index), os.O_RDONLY, 0)
 	if err != nil {
 		return "read name error"
@@ -328,7 +331,7 @@ func main() {
 			type_unknown:  "未知",
 		}
 		for index, devType := range auto_detect_result {
-			devName := get_dev_name(index)
+			devName := get_dev_name_by_index(index)
 			fmt.Printf("检测到设备 %s(/dev/input/event%d) : %s\n", devName, index, devTypeFriendlyName[devType])
 		}
 	}
