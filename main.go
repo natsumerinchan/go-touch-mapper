@@ -375,6 +375,7 @@ func main() {
 
 		touch_control_ch := make(chan *touch_control_pack)
 		u_input_control_ch := make(chan *u_input_control_pack)
+		fileted_u_input_control_ch := make(chan *u_input_control_pack)
 		touch_event_ch := make(chan *event_pack)
 		if *touchIndex != -1 {
 			fmt.Printf("启用触屏混合 : event%d\n", *touchIndex)
@@ -384,13 +385,15 @@ func main() {
 				if v == type_touch {
 					fmt.Printf("启用触屏混合 : event%d\n", k)
 					touch_event_ch = create_event_reader(map[int]bool{k: true})
+					break
 				}
 			}
 		}
 
 		go listen_device_orientation()
 
-		go handel_u_input_mouse_keyboard(u_input_control_ch)
+		go handel_u_input_mouse_keyboard(fileted_u_input_control_ch)
+
 		if *usingInputManager {
 			fmt.Println("触屏控制将使用inputManager处理")
 			go handel_touch_using_input_manager(touch_control_ch) //先统一坐标系
@@ -404,6 +407,9 @@ func main() {
 		go touchHandler.loop_handel_wasd_wheel()
 		go touchHandler.loop_handel_rs_move()
 		go touchHandler.handel_event()
+
+		v_mouse := init_v_mouse_controller(touchHandler, u_input_control_ch, fileted_u_input_control_ch)
+		go v_mouse.main_loop()
 
 		if *using_remote_control {
 			go udp_event_injector(events_ch, *udp_port)

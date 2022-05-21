@@ -9,8 +9,7 @@ import (
 
 func handel_touch_using_input_manager(control_ch chan *touch_control_pack) {
 	socket, err := net.DialUDP("udp", nil, &net.UDPAddr{
-		IP: net.IPv4(0, 0, 0, 0),
-		// IP:   net.IPv4(192, 168, 1, 64),
+		IP:   net.IPv4(0, 0, 0, 0),
 		Port: 61068,
 	})
 	if err != nil {
