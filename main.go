@@ -314,6 +314,12 @@ func main() {
 		Default:  61069,
 	})
 
+	var using_v_mouse *bool = parser.Flag("v", "v-mouse", &argparse.Options{
+		Required: false,
+		Default:  false,
+		Help:     "用触摸操作模拟鼠标,需要额光标外显示程序",
+	})
+
 	err := parser.Parse(os.Args)
 	if err != nil {
 		fmt.Print(parser.Usage(err))
@@ -401,20 +407,31 @@ func main() {
 			go handel_touch_using_vTouch(touch_control_ch) //然后再处理转换旋转后的坐标
 		}
 
-		touchHandler := InitTouchHandler(*configPath, events_ch, touch_control_ch, u_input_control_ch, !*usingInputManager)
+		map_switch_signal := make(chan bool)
+		touchHandler := InitTouchHandler(*configPath, events_ch, touch_control_ch, u_input_control_ch, !*usingInputManager, map_switch_signal)
 		go touchHandler.mix_touch(touch_event_ch)
 		go touchHandler.auto_handel_view_release()
 		go touchHandler.loop_handel_wasd_wheel()
 		go touchHandler.loop_handel_rs_move()
 		go touchHandler.handel_event()
-
-		v_mouse := init_v_mouse_controller(touchHandler, u_input_control_ch, fileted_u_input_control_ch)
-		go v_mouse.main_loop()
+		if *using_v_mouse {
+			v_mouse := init_v_mouse_controller(touchHandler, u_input_control_ch, fileted_u_input_control_ch, map_switch_signal)
+			go v_mouse.main_loop()
+		} else {
+			go (func() {
+				for {
+					select {
+					case tmp := <-u_input_control_ch:
+						fileted_u_input_control_ch <- tmp
+					case <-map_switch_signal:
+					}
+				}
+			})()
+		}
 
 		if *using_remote_control {
 			go udp_event_injector(events_ch, *udp_port)
 		}
-
 		exitChan := make(chan os.Signal)
 		signal.Notify(exitChan, os.Interrupt, os.Kill, syscall.SIGTERM)
 		<-exitChan

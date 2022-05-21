@@ -49,11 +49,12 @@ type TouchHandler struct {
 	wasd_wheel_released      bool       //wasd滚轮释放 两个都释放时 轮盘才会释放
 	wasd_wheel_last_x        int32      //wasd滚轮上一次的x坐标
 	wasd_wheel_last_y        int32      //wasd滚轮上一次的y坐标
-	wasd_up_down_stause      []bool
+	wasd_up_down_statues     []bool
 	key_action_state_save    sync.Map
 	BTN_SELECT_UP_DOWN       int32
 	KEYBOARD_SWITCH_KEY_NAME string
 	view_range_limited       bool //视角是否有界
+	map_switch_signal        chan bool
 }
 
 const (
@@ -101,6 +102,7 @@ func InitTouchHandler(
 	touch_controller chan *touch_control_pack,
 	u_input chan *u_input_control_pack,
 	view_range_limited bool,
+	map_switch_signal chan bool,
 ) *TouchHandler {
 	rand.Seed(time.Now().UnixNano())
 
@@ -194,11 +196,12 @@ func InitTouchHandler(
 		wasd_wheel_released:      true,
 		wasd_wheel_last_x:        int32(config_json.Get("WHEEL").Get("POS").GetIndex(0).MustInt()),
 		wasd_wheel_last_y:        int32(config_json.Get("WHEEL").Get("POS").GetIndex(1).MustInt()),
-		wasd_up_down_stause:      make([]bool, 4),
+		wasd_up_down_statues:     make([]bool, 4),
 		key_action_state_save:    sync.Map{},
 		BTN_SELECT_UP_DOWN:       0,
 		KEYBOARD_SWITCH_KEY_NAME: config_json.Get("MOUSE").Get("SWITCH_KEY").MustString(),
 		view_range_limited:       view_range_limited,
+		map_switch_signal:        map_switch_signal,
 	}
 }
 
@@ -340,16 +343,16 @@ func (self *TouchHandler) get_wasd_now_target() (int32, int32) { //根据wasd当
 	// self.wasd_up_down_stause
 	var x int32 = 0
 	var y int32 = 0
-	if self.wasd_up_down_stause[0] {
+	if self.wasd_up_down_statues[0] {
 		y -= 1
 	}
-	if self.wasd_up_down_stause[2] {
+	if self.wasd_up_down_statues[2] {
 		y += 1
 	}
-	if self.wasd_up_down_stause[1] {
+	if self.wasd_up_down_statues[1] {
 		x -= 1
 	}
-	if self.wasd_up_down_stause[3] {
+	if self.wasd_up_down_statues[3] {
 		x += 1
 	}
 
@@ -571,6 +574,7 @@ func (self *TouchHandler) handel_key_up_down(key_name string, up_down int32, dev
 	if self.BTN_SELECT_UP_DOWN == DOWN {
 		if key_name == "BTN_RS" && up_down == UP {
 			self.map_on = !self.map_on
+			self.map_switch_signal <- true
 			fmt.Printf("切换模式\n")
 		}
 	}
@@ -578,6 +582,7 @@ func (self *TouchHandler) handel_key_up_down(key_name string, up_down int32, dev
 	if key_name == self.KEYBOARD_SWITCH_KEY_NAME { //屏蔽切换键
 		if up_down == UP {
 			self.map_on = !self.map_on
+			self.map_switch_signal <- true
 			fmt.Printf("切换模式\n")
 		}
 		return
@@ -587,9 +592,9 @@ func (self *TouchHandler) handel_key_up_down(key_name string, up_down int32, dev
 		for i := 0; i < 4; i++ {
 			if self.wheel_wasd[i] == key_name {
 				if up_down == DOWN {
-					self.wasd_up_down_stause[i] = true
+					self.wasd_up_down_statues[i] = true
 				} else if up_down == UP {
-					self.wasd_up_down_stause[i] = false
+					self.wasd_up_down_statues[i] = false
 				}
 				return
 			}

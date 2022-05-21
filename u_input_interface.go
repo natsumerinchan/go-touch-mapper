@@ -33,7 +33,7 @@ func createDevice(f *os.File) (err error) {
 	return ioctl(f.Fd(), UIDEVCREATE(), uintptr(0))
 }
 
-func create_u_input_touch_screen(width int, height int) *os.File {
+func create_u_input_touch_screen(width int32, height int32) *os.File {
 	deviceFile, err := os.OpenFile("/dev/uinput", syscall.O_WRONLY|syscall.O_NONBLOCK, 0660)
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -63,8 +63,8 @@ func create_u_input_touch_screen(width int, height int) *os.File {
 	absMin[absMtTrackingId] = 0
 
 	var absMax [absCnt]int32
-	absMax[absMtPositionX] = int32(width)
-	absMax[absMtPositionY] = int32(height)
+	absMax[absMtPositionX] = width
+	absMax[absMtPositionY] = height
 	absMax[absMtTouchMajor] = 255
 	absMax[absMtWidthMajor] = 0
 	absMax[absMtSlot] = 255
@@ -194,7 +194,7 @@ const (
 	BTN_TOUCH          = 0x14A
 )
 
-func get_wm_size() (int, int) {
+func get_wm_size() (int32, int32) {
 	cmd := exec.Command("sh", "-c", "wm size")
 	out, err := cmd.Output()
 	if err != nil {
@@ -204,7 +204,7 @@ func get_wm_size() (int, int) {
 	res := strings.Split(wxh, "x")
 	width, _ := strconv.Atoi(res[0])
 	height, _ := strconv.Atoi(res[1])
-	return width, height
+	return int32(width), int32(height)
 }
 
 func handel_touch_using_vTouch(control_ch chan *touch_control_pack) {
