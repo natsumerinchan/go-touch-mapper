@@ -1,0 +1,97 @@
+{
+    "SCREEN": {
+        "SIZE": [
+            1920,
+            1080
+        ]
+    },
+    "MOUSE": {
+        "SWITCH_KEY": "KEY_GRAVE",
+        "POS": [
+            1060,
+            540
+        ],
+        "SPEED": [
+            1,
+            1
+        ]
+    },
+    "WHEEL": {
+        "POS": [
+            388,
+            794
+        ],
+        "RANGE": 138,
+        "WASD": [
+            "KEY_W",
+            "KEY_A",
+            "KEY_S",
+            "KEY_D"
+        ]
+    },
+    "KEY_MAPS": {
+        "BTN_Y": {
+            "TYPE": "PRESS",
+            "POS": [
+                1775,
+                498
+            ]
+        },
+        "KEY_Q": {
+            "TYPE": "PRESS",
+            "POS": [
+                1760,
+                498
+            ]
+        },
+        "KEY_E": {
+            "TYPE": "PRESS",
+            "POS": [
+                1707,
+                654
+            ]
+        },
+        "BTN_LEFT": {
+            "TYPE": "PRESS",
+            "POS": [
+                194,
+                475
+            ]
+        },
+        "KEY_R": {
+            "TYPE": "PRESS",
+            "POS": [
+                1321,
+                985
+            ]
+        },
+        "KEY_SPACE": {
+            "TYPE": "PRESS",
+            "POS": [
+                1710,
+                986
+            ]
+        },
+        "BTN_X": {
+            "TYPE": "PRESS",
+            "POS": [
+                1324,
+                984
+            ]
+        },
+        "BTN_RB": {
+            "TYPE": "PRESS",
+            "POS": [
+                206,
+                482
+            ]
+        },
+        "BTN_LB": {
+            "TYPE": "PRESS",
+            "POS": [
+                1690,
+                983
+            ]
+        }
+    }
+}
