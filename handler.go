@@ -304,22 +304,26 @@ func (self *TouchHandler) handel_view_move(offset_x int32, offset_y int32) { //�
 	self.view_lock.Unlock()
 }
 
-func (self *TouchHandler) auto_handel_view_release() { //视角释放
-	for {
-		select {
-		case <-global_close_signal:
-			return
-		default:
-			self.view_lock.Lock()
-			if self.view_id != -1 {
-				self.auto_release_view_count += 1
-				if self.auto_release_view_count > 10 { //200ms不动 则释放
-					self.auto_release_view_count = 0
-					self.view_id = self.touch_release(self.view_id)
+func (self *TouchHandler) auto_handel_view_release(timeout int) { //视角释放
+	if timeout == 0 {
+		return
+	} else {
+		for {
+			select {
+			case <-global_close_signal:
+				return
+			default:
+				self.view_lock.Lock()
+				if self.view_id != -1 {
+					self.auto_release_view_count += 1
+					if self.auto_release_view_count > int32(timeout/50) { //200ms不动 则释放
+						self.auto_release_view_count = 0
+						self.view_id = self.touch_release(self.view_id)
+					}
 				}
+				self.view_lock.Unlock()
+				time.Sleep(time.Duration(50) * time.Millisecond)
 			}
-			self.view_lock.Unlock()
-			time.Sleep(time.Duration(20) * time.Millisecond)
 		}
 	}
 }

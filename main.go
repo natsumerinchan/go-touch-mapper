@@ -320,6 +320,12 @@ func main() {
 		Help:     "用触摸操作模拟鼠标,需要额光标外显示程序",
 	})
 
+	var view_release_timeout *int = parser.Int("", "auto-release", &argparse.Options{
+		Required: false,
+		Help:     "触发视角自动释放所需的静止ms数,50ms为检查单位,默认200,置0禁用",
+		Default:  200,
+	})
+
 	err := parser.Parse(os.Args)
 	if err != nil {
 		fmt.Print(parser.Usage(err))
@@ -410,7 +416,7 @@ func main() {
 		map_switch_signal := make(chan bool)
 		touchHandler := InitTouchHandler(*configPath, events_ch, touch_control_ch, u_input_control_ch, !*usingInputManager, map_switch_signal)
 		go touchHandler.mix_touch(touch_event_ch)
-		go touchHandler.auto_handel_view_release()
+		go touchHandler.auto_handel_view_release(*view_release_timeout)
 		go touchHandler.loop_handel_wasd_wheel()
 		go touchHandler.loop_handel_rs_move()
 		go touchHandler.handel_event()
