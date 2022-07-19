@@ -55,6 +55,9 @@ type TouchHandler struct {
 	KEYBOARD_SWITCH_KEY_NAME string
 	view_range_limited       bool //视角是否有界
 	map_switch_signal        chan bool
+	measure_sensitivity_mode bool  //计算模式
+	total_move_x             int32 //视角总移动距离x
+	total_move_y             int32 //视角总移动距离y
 }
 
 const (
@@ -103,6 +106,7 @@ func InitTouchHandler(
 	u_input chan *u_input_control_pack,
 	view_range_limited bool,
 	map_switch_signal chan bool,
+	measure_sensitivity_mode bool,
 ) *TouchHandler {
 	rand.Seed(time.Now().UnixNano())
 
@@ -202,6 +206,7 @@ func InitTouchHandler(
 		KEYBOARD_SWITCH_KEY_NAME: config_json.Get("MOUSE").Get("SWITCH_KEY").MustString(),
 		view_range_limited:       view_range_limited,
 		map_switch_signal:        map_switch_signal,
+		measure_sensitivity_mode: measure_sensitivity_mode,
 	}
 }
 
@@ -270,6 +275,11 @@ func (self *TouchHandler) loop_handel_rs_move() {
 
 func (self *TouchHandler) handel_view_move(offset_x int32, offset_y int32) { //视角移动
 	self.view_lock.Lock()
+	if self.measure_sensitivity_mode {
+		self.total_move_x += offset_x
+		self.total_move_y += offset_y
+		fmt.Println("total_move_x:", self.total_move_x, "total_move_y:", self.total_move_y)
+	}
 	self.auto_release_view_count = 0
 	if self.view_id == -1 {
 		self.view_current_x = self.view_init_x + rand_offset()
@@ -450,8 +460,8 @@ func (self *TouchHandler) handel_rel_event(x int32, y int32, HWhell int32, Wheel
 	}
 }
 
-func (self *TouchHandler) excute_key_action(key_name string, up_down int32, action *simplejson.Json, state interface{}) {
-	// fmt.Printf("excute action up_down:%d , action %v , state %v\n", up_down, action, state == nil)
+func (self *TouchHandler) execute_key_action(key_name string, up_down int32, action *simplejson.Json, state interface{}) {
+	// fmt.Printf("excute action up_down:%d , action %v , state %v\n", up_down, action, state)
 	switch action.Get("TYPE").MustString() {
 	case "PRESS": //按键的按下与释放直接映射为触屏的按下与释放
 		if up_down == DOWN {
@@ -565,6 +575,26 @@ func (self *TouchHandler) excute_key_action(key_name string, up_down int32, acti
 	}
 }
 
+func (self *TouchHandler) switch_map_mode() {
+
+	self.total_move_x = 0
+	self.total_move_y = 0                           //总移动距离清零
+	self.view_id = self.touch_release(self.view_id) //视角id释放
+
+	self.key_action_state_save.Range(func(key, value interface{}) bool {
+		self.execute_key_action(key.(string), UP, self.config.Get("KEY_MAPS").Get(key.(string)), value)
+		fmt.Printf("已释放key:%s\n", key.(string))
+		return true
+	})
+
+	self.map_on = !self.map_on     //切换
+	self.map_switch_signal <- true //发送信号到v_mouse切换显示
+
+	fmt.Printf("map_on:%v\n", self.map_on)
+	fmt.Printf("view_id:%d\n", self.view_id)
+
+}
+
 func (self *TouchHandler) handel_key_up_down(key_name string, up_down int32, dev_name string) {
 	// fmt.Printf("key_name:%s, upd_own:%d, dev_name:%s\n", key_name, up_down, dev_name)
 	if key_name == "" {
@@ -577,17 +607,14 @@ func (self *TouchHandler) handel_key_up_down(key_name string, up_down int32, dev
 	}
 	if self.BTN_SELECT_UP_DOWN == DOWN {
 		if key_name == "BTN_RS" && up_down == UP {
-			self.map_on = !self.map_on
-			self.map_switch_signal <- true
-			fmt.Printf("切换模式\n")
+			self.switch_map_mode()
+			return
 		}
 	}
 
 	if key_name == self.KEYBOARD_SWITCH_KEY_NAME { //屏蔽切换键
 		if up_down == UP {
-			self.map_on = !self.map_on
-			self.map_switch_signal <- true
-			fmt.Printf("切换模式\n")
+			self.switch_map_mode()
 		}
 		return
 	}
@@ -603,17 +630,31 @@ func (self *TouchHandler) handel_key_up_down(key_name string, up_down int32, dev
 				return
 			}
 		}
+		if self.measure_sensitivity_mode && up_down == UP {
+			if key_name == "KEY_LEFT" {
+				self.handel_view_move(-1, 0)
+				return
+			} else if key_name == "KEY_RIGHT" {
+				self.handel_view_move(1, 0)
+				return
+			} else if key_name == "KEY_UP" {
+				self.handel_view_move(0, -1)
+				return
+			} else if key_name == "KEY_DOWN" {
+				self.handel_view_move(0, 1)
+				return
+			}
+		}
 		if action, ok := self.config.Get("KEY_MAPS").CheckGet(key_name); ok {
 			state, ok := self.key_action_state_save.Load(key_name)
 			if (up_down == UP && !ok) || (up_down == DOWN && ok) {
 			} else {
-				go self.excute_key_action(key_name, up_down, action, state)
+				go self.execute_key_action(key_name, up_down, action, state)
 			}
 		} else {
 			return
 		}
 	} else {
-
 		if jsconfig, ok := self.joystickInfo[dev_name]; ok {
 			//如果是手柄 则检查是否设置了键盘映射
 			if joystick_btn_map_key_name, ok := jsconfig.Get("MAP_KEYBOARD").CheckGet(key_name); ok {

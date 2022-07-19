@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"encoding/binary"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -266,6 +268,86 @@ func get_dev_name_by_index(index int) string {
 	return d.Name()
 }
 
+func execute_view_move(handelerInstance *TouchHandler, x, stepValue, sleepMS int) {
+	handelerInstance.handel_view_move(0, 0)
+	time.Sleep(time.Millisecond * time.Duration(sleepMS))
+	if x > 0 {
+		steps := x / stepValue
+		for i := 0; i < steps; i++ {
+			if handelerInstance.map_on == false {
+				break
+			}
+			handelerInstance.handel_view_move(int32(stepValue), 0)
+			time.Sleep(time.Millisecond * time.Duration(sleepMS))
+		}
+		handelerInstance.handel_view_move(int32(x%stepValue), 0)
+	} else {
+		steps := -x / stepValue
+		for i := 0; i < steps; i++ {
+			if handelerInstance.map_on == false {
+				break
+			}
+			handelerInstance.handel_view_move(-int32(stepValue), 0)
+			time.Sleep(time.Millisecond * time.Duration(sleepMS))
+		}
+		handelerInstance.handel_view_move(-int32(x%stepValue), 0)
+	}
+}
+
+func stdin_control_view_move(handelerInstance *TouchHandler) {
+	fmt.Printf("输入数值以精确控制view移动 [ x | x 步长 间隔 ]\n")
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		args := strings.Split(scanner.Text(), " ")
+		var x, stepValue, sleepMS int
+		var err error
+		if len(args) == 1 {
+			x, err = strconv.Atoi(args[0])
+			if err != nil {
+				fmt.Printf("输入错误: %s\n", err)
+				continue
+			} else {
+				stepValue = 24
+				sleepMS = 16
+			}
+
+		} else if len(args) == 3 {
+			x, err = strconv.Atoi(args[0])
+			if err != nil {
+				fmt.Printf("输入错误: %s\n", err)
+				continue
+			}
+			stepValue, err = strconv.Atoi(args[1])
+			if err != nil {
+				fmt.Printf("输入错误: %s\n", err)
+				continue
+			}
+			sleepMS, err = strconv.Atoi(args[2])
+			if err != nil {
+				fmt.Printf("输入错误: %s\n", err)
+				continue
+			}
+		} else {
+			fmt.Printf("参数错误\n usage:x | x stepValue sleepMS\n")
+			continue
+		}
+		fmt.Printf("x: %d stepValue: %d sleepMS: %d\n", x, stepValue, sleepMS)
+		if handelerInstance.map_on {
+			execute_view_move(handelerInstance, x, stepValue, sleepMS)
+		} else {
+			fmt.Printf("等待映射开关打开中...\n")
+			for {
+				if handelerInstance.map_on == false {
+					time.Sleep(time.Duration(100) * time.Millisecond)
+				} else {
+					execute_view_move(handelerInstance, x, stepValue, sleepMS)
+					break
+				}
+			}
+		}
+	}
+}
+
 func main() {
 
 	parser := argparse.NewParser("go-touch-mappeer", " ")
@@ -310,7 +392,7 @@ func main() {
 
 	var udp_port *int = parser.Int("p", "port", &argparse.Options{
 		Required: false,
-		Help:     "指定监听远程事件的UDP端口号,默认61069",
+		Help:     "指定监听远程事件的UDP端口号",
 		Default:  61069,
 	})
 
@@ -322,8 +404,14 @@ func main() {
 
 	var view_release_timeout *int = parser.Int("", "auto-release", &argparse.Options{
 		Required: false,
-		Help:     "触发视角自动释放所需的静止ms数,50ms为检查单位,默认200,置0禁用",
+		Help:     "触发视角自动释放所需的静止ms数,50ms为检查单位,置0禁用",
 		Default:  200,
+	})
+
+	var measure_sensitivity_mode *bool = parser.Flag("", "measure-mode", &argparse.Options{
+		Required: false,
+		Default:  false,
+		Help:     "显示视角移动像素计数,且可输入数值模拟滑动,方向键可微调",
 	})
 
 	err := parser.Parse(os.Args)
@@ -413,8 +501,16 @@ func main() {
 			go handel_touch_using_vTouch(touch_control_ch) //然后再处理转换旋转后的坐标
 		}
 
-		map_switch_signal := make(chan bool)
-		touchHandler := InitTouchHandler(*configPath, events_ch, touch_control_ch, u_input_control_ch, !*usingInputManager, map_switch_signal)
+		map_switch_signal := make(chan bool) //通知虚拟鼠标当前为鼠标还是映射模式
+		touchHandler := InitTouchHandler(
+			*configPath,
+			events_ch,
+			touch_control_ch,
+			u_input_control_ch,
+			!*usingInputManager,
+			map_switch_signal,
+			*measure_sensitivity_mode,
+		)
 		go touchHandler.mix_touch(touch_event_ch)
 		go touchHandler.auto_handel_view_release(*view_release_timeout)
 		go touchHandler.loop_handel_wasd_wheel()
@@ -438,6 +534,11 @@ func main() {
 		if *using_remote_control {
 			go udp_event_injector(events_ch, *udp_port)
 		}
+
+		if *measure_sensitivity_mode {
+			go stdin_control_view_move(touchHandler)
+		}
+
 		exitChan := make(chan os.Signal)
 		signal.Notify(exitChan, os.Interrupt, os.Kill, syscall.SIGTERM)
 		<-exitChan
