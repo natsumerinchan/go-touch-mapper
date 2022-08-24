@@ -90,7 +90,7 @@ var HAT_D_U map[string]([]int32) = map[string]([]int32){
 	"0.0_0.5": []int32{0, UP},
 }
 
-var HAT0_KEYNAME map[string][]string = map[string][]string{
+var HAT0_KEY_NAME map[string][]string = map[string][]string{
 	"HAT0X": {"BTN_DPAD_LEFT", "BTN_DPAD_RIGHT"},
 	"HAT0Y": {"BTN_DPAD_UP", "BTN_DPAD_DOWN"},
 }
@@ -714,33 +714,33 @@ func (self *TouchHandler) handel_abs_events(events []*evdev.Event, dev_name stri
 			name := abs_info.Get("name").MustString("")
 			abs_mini := int32(abs_info.Get("range").GetIndex(0).MustInt())
 			abs_max := int32(abs_info.Get("range").GetIndex(1).MustInt())
-			formated_value := float64(event.Value-abs_mini) / float64(abs_max-abs_mini)
+			formatted_value := float64(event.Value-abs_mini) / float64(abs_max-abs_mini)
 			_last_value, _ := self.abs_last.Load(name)
 			last_value := _last_value.(float64)
 			if name == "HAT0X" || name == "HAT0Y" {
-				down_up_key := fmt.Sprintf("%s_%s", strconv.FormatFloat(last_value, 'f', 1, 64), strconv.FormatFloat(formated_value, 'f', 1, 64))
-				self.abs_last.Store(name, formated_value)
+				down_up_key := fmt.Sprintf("%s_%s", strconv.FormatFloat(last_value, 'f', 1, 64), strconv.FormatFloat(formatted_value, 'f', 1, 64))
+				self.abs_last.Store(name, formatted_value)
 				direction := HAT_D_U[down_up_key][0]
 				up_down := HAT_D_U[down_up_key][1]
-				translated_name := HAT0_KEYNAME[name][direction]
+				translated_name := HAT0_KEY_NAME[name][direction]
 				self.handel_key_up_down(translated_name, up_down, dev_name)
 			} else if name == "LT" || name == "RT" {
 				for i := 0; i < 6; i++ {
-					if last_value < float64(i)/5 && formated_value >= float64(i)/5 {
+					if last_value < float64(i)/5 && formatted_value >= float64(i)/5 {
 						translated_name := fmt.Sprintf("%s_%d", name, i)
 						self.handel_key_up_down("BTN_"+translated_name, DOWN, dev_name)
-					} else if last_value >= float64(i)/5 && formated_value < float64(i)/5 {
+					} else if last_value >= float64(i)/5 && formatted_value < float64(i)/5 {
 						translated_name := fmt.Sprintf("%s_%d", name, i)
 						self.handel_key_up_down("BTN_"+translated_name, UP, dev_name)
 					}
 				}
-				self.abs_last.Store(name, formated_value)
+				self.abs_last.Store(name, formatted_value)
 			} else { //必定摇杆
 				if self.using_joystick_name != dev_name {
 					self.using_joystick_name = dev_name
 				}
-				// self.abs_last_set(name, formated_value)
-				self.abs_last.Store(name, formated_value)
+				// self.abs_last_set(name, formatted_value)
+				self.abs_last.Store(name, formatted_value)
 				//右摇杆控制视角 只需修改值 有单独线程去处理
 				//左摇杆控制轮盘 且与WASD可同时工作 在这里处理
 				if (name == "LS_X" || name == "LS_Y") && self.map_on {
@@ -764,16 +764,17 @@ func (self *TouchHandler) handel_abs_events(events []*evdev.Event, dev_name stri
 	}
 }
 
-func (self *TouchHandler) mix_touch(touch_events chan *event_pack) {
+func (self *TouchHandler) mix_touch(touch_events chan *event_pack, max_mt_x, max_mt_y int32) {
+	wm_size_x, wm_size_y := get_wm_size()
 	id_2_vid := make([]int32, 10) //硬件ID到虚拟ID的映射
 	var last_id int32 = 0
 	pos_s := make([][]int32, 10)
 	for i := 0; i < 10; i++ {
 		pos_s[i] = make([]int32, 2)
 	}
-	id_stause := make([]bool, 10)
+	id_statuses := make([]bool, 10)
 	for i := 0; i < 10; i++ {
-		id_stause[i] = false
+		id_statuses[i] = false
 	}
 
 	translate_xy := func(x, y int32) (int32, int32) { //根据设备方向 将eventX的坐标系转换为标准坐标系
@@ -794,8 +795,8 @@ func (self *TouchHandler) mix_touch(touch_events chan *event_pack) {
 	for {
 		copy_pos_s := make([][]int32, 10)
 		copy(copy_pos_s, pos_s)
-		copy_id_stause := make([]bool, 10)
-		copy(copy_id_stause, id_stause)
+		copy_id_statuses := make([]bool, 10)
+		copy(copy_id_statuses, id_statuses)
 		select {
 		case <-global_close_signal:
 			return
@@ -803,22 +804,24 @@ func (self *TouchHandler) mix_touch(touch_events chan *event_pack) {
 			for _, event := range event_pack.events {
 				switch event.Code {
 				case ABS_MT_POSITION_X:
-					pos_s[last_id] = []int32{event.Value, pos_s[last_id][1]}
+					pos_s[last_id] = []int32{event.Value * wm_size_x / max_mt_x, pos_s[last_id][1]}
+
 				case ABS_MT_POSITION_Y:
-					pos_s[last_id] = []int32{pos_s[last_id][0], event.Value}
+					pos_s[last_id] = []int32{pos_s[last_id][0], event.Value * wm_size_y / max_mt_y}
 				case ABS_MT_TRACKING_ID:
 					if event.Value == -1 {
-						id_stause[last_id] = false
+						id_statuses[last_id] = false
 					} else {
-						id_stause[last_id] = true
+						id_statuses[last_id] = true
 					}
 				case ABS_MT_SLOT:
 					last_id = event.Value
 				}
 			}
+			// fmt.Println(pos_s)
 			for i := 0; i < 10; i++ {
-				if copy_id_stause[i] != id_stause[i] {
-					if id_stause[i] { //false -> true 申请
+				if copy_id_statuses[i] != id_statuses[i] {
+					if id_statuses[i] { //false -> true 申请
 						x, y := translate_xy(pos_s[i][0], pos_s[i][1])
 						id_2_vid[i] = self.touch_require(x, y)
 					} else {

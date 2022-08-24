@@ -348,6 +348,26 @@ func stdin_control_view_move(handelerInstance *TouchHandler) {
 	}
 }
 
+func get_MT_size(indexes map[int]bool) (int32, int32) { //获取MTPositionX和MTPositionY的max值
+	//在1+7p上是等于get_wm_size
+	//但是红魔7sp应该是为了更精确，使用了缩放,实际的数值为 rawValue >> 3
+	// rawValue * wm_size / mt_size = true_value
+	for index, _ := range indexes {
+		fd, err := os.OpenFile(fmt.Sprintf("/dev/input/event%d", index), os.O_RDONLY, 0)
+		if err != nil {
+			log.Fatal(err)
+		}
+		d := evdev.Open(fd)
+		defer d.Close()
+		abs := d.AbsoluteTypes()
+		MTPositionX, _ := abs[evdev.AbsoluteMTPositionX]
+		MTPositionY, _ := abs[evdev.AbsoluteMTPositionY]
+		// fmt.Print("MTPositionX", MTPositionX.Max, "MTPositionY", MTPositionY.Max)
+		return MTPositionX.Max, MTPositionY.Max
+	}
+	return int32(1), int32(1)
+}
+
 func main() {
 
 	parser := argparse.NewParser("go-touch-mappeer", " ")
@@ -477,14 +497,17 @@ func main() {
 		u_input_control_ch := make(chan *u_input_control_pack)
 		fileted_u_input_control_ch := make(chan *u_input_control_pack)
 		touch_event_ch := make(chan *event_pack)
+		max_mt_x, max_mt_y := int32(1), int32(1)
 		if *touchIndex != -1 {
 			fmt.Printf("启用触屏混合 : event%d\n", *touchIndex)
 			touch_event_ch = create_event_reader(map[int]bool{*touchIndex: true})
+			max_mt_x, max_mt_y = get_MT_size(map[int]bool{*touchIndex: true})
 		} else {
 			for k, v := range auto_detect_result {
 				if v == type_touch {
 					fmt.Printf("启用触屏混合 : event%d\n", k)
 					touch_event_ch = create_event_reader(map[int]bool{k: true})
+					max_mt_x, max_mt_y = get_MT_size(map[int]bool{k: true})
 					break
 				}
 			}
@@ -511,7 +534,8 @@ func main() {
 			map_switch_signal,
 			*measure_sensitivity_mode,
 		)
-		go touchHandler.mix_touch(touch_event_ch)
+
+		go touchHandler.mix_touch(touch_event_ch, max_mt_x, max_mt_y)
 		go touchHandler.auto_handel_view_release(*view_release_timeout)
 		go touchHandler.loop_handel_wasd_wheel()
 		go touchHandler.loop_handel_rs_move()

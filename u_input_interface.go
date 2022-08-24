@@ -201,6 +201,7 @@ func get_wm_size() (int32, int32) {
 		fmt.Println(err)
 	}
 	wxh := string(out[15 : len(out)-1])
+	// fmt.Println(wxh)
 	res := strings.Split(wxh, "x")
 	width, _ := strconv.Atoi(res[0])
 	height, _ := strconv.Atoi(res[1])
