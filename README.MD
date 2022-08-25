@@ -91,6 +91,8 @@ go-touch-mapper -a -c configs/SMC_JS.json
 
 左上角为原点，向右为X，向下为Y
 
+按住键盘按键后，点击即可添加按键映射
+
 ## Joystick
 joystickInfos文件夹下json文件为手柄配置文件
 
