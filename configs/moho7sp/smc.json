@@ -1,0 +1,216 @@
+{
+    "SCREEN": {
+        "SIZE": [
+            2400,
+            1080
+        ]
+    },
+    "MOUSE": {
+        "SWITCH_KEY": "KEY_GRAVE",
+        "POS": [
+            1300,
+            540
+        ],
+        "SPEED": [
+            1,
+            1
+        ]
+    },
+    "WHEEL": {
+        "POS": [
+            300,
+            793
+        ],
+        "RANGE": 188,
+        "WASD": [
+            "KEY_W",
+            "KEY_A",
+            "KEY_S",
+            "KEY_D"
+        ]
+    },
+    "KEY_MAPS": {
+        "BTN_LEFT": {
+            "TYPE": "PRESS",
+            "POS": [
+                143,
+                556
+            ]
+        },
+        "BTN_RIGHT": {
+            "TYPE": "PRESS",
+            "POS": [
+                1900,
+                811
+            ]
+        },
+        "KEY_E": {
+            "TYPE": "PRESS",
+            "POS": [
+                1904,
+                813
+            ]
+        },
+        "KEY_R": {
+            "TYPE": "PRESS",
+            "POS": [
+                1936,
+                993
+            ]
+        },
+        "KEY_LEFTSHIFT": {
+            "TYPE": "PRESS",
+            "POS": [
+                2134,
+                996
+            ]
+        },
+        "KEY_C": {
+            "TYPE": "PRESS",
+            "POS": [
+                2311,
+                921
+            ]
+        },
+        "KEY_SPACE": {
+            "TYPE": "PRESS",
+            "POS": [
+                2310,
+                740
+            ]
+        },
+        "KEY_F": {
+            "TYPE": "PRESS",
+            "POS": [
+                2313,
+                380
+            ]
+        },
+        "KEY_T": {
+            "TYPE": "PRESS",
+            "POS": [
+                2301,
+                526
+            ]
+        },
+        "KEY_1": {
+            "TYPE": "PRESS",
+            "POS": [
+                2168,
+                125
+            ]
+        },
+        "KEY_2": {
+            "TYPE": "PRESS",
+            "POS": [
+                2170,
+                220
+            ]
+        },
+        "KEY_3": {
+            "TYPE": "PRESS",
+            "POS": [
+                2179,
+                361
+            ]
+        },
+        "KEY_Q": {
+            "TYPE": "PRESS",
+            "POS": [
+                1200,
+                936
+            ]
+        },
+        "BTN_LT": {
+            "TYPE": "PRESS",
+            "POS": [
+                1906,
+                819
+            ]
+        },
+        "BTN_RT": {
+            "TYPE": "PRESS",
+            "POS": [
+                141,
+                554
+            ]
+        },
+        "BTN_LS": {
+            "TYPE": "PRESS",
+            "POS": [
+                2313,
+                744
+            ]
+        },
+        "BTN_A": {
+            "TYPE": "PRESS",
+            "POS": [
+                2316,
+                744
+            ]
+        },
+        "BTN_B": {
+            "TYPE": "PRESS",
+            "POS": [
+                2138,
+                1004
+            ]
+        },
+        "BTN_X": {
+            "TYPE": "PRESS",
+            "POS": [
+                1938,
+                984
+            ]
+        },
+        "BTN_RB": {
+            "TYPE": "PRESS",
+            "POS": [
+                1911,
+                819
+            ]
+        },
+        "BTN_DPAD_LEFT": {
+            "TYPE": "PRESS",
+            "POS": [
+                2168,
+                125
+            ]
+        },
+        "BTN_DPAD_UP": {
+            "TYPE": "PRESS",
+            "POS": [
+                2173,
+                220
+            ]
+        },
+        "BTN_DPAD_RIGHT": {
+            "TYPE": "PRESS",
+            "POS": [
+                2176,
+                361
+            ]
+        },
+        "BTN_DPAD_DOWN": {
+            "TYPE": "PRESS",
+            "POS": [
+                1199,
+                940
+            ]
+        },
+        "BTN_LB": {
+            "TYPE": "PRESS",
+            "POS": [
+                2318,
+                386
+            ]
+        },
+        "KEY_TAB": {
+            "TYPE": "PRESS",
+            "POS": [
+                1179,
+                51
+            ]
+        }
+    }
+}

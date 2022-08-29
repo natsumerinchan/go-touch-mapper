@@ -1,0 +1,230 @@
+{
+    "SCREEN": {
+        "SIZE": [
+            2400,
+            1080
+        ]
+    },
+    "MOUSE": {
+        "SWITCH_KEY": "KEY_GRAVE",
+        "POS": [
+            1300,
+            540
+        ],
+        "SPEED": [
+            1,
+            1
+        ]
+    },
+    "WHEEL": {
+        "POS": [
+            381,
+            799
+        ],
+        "RANGE": 188,
+        "WASD": [
+            "KEY_W",
+            "KEY_A",
+            "KEY_S",
+            "KEY_D"
+        ]
+    },
+    "KEY_MAPS": {
+        "BTN_LEFT": {
+            "TYPE": "PRESS",
+            "POS": [
+                124,
+                551
+            ]
+        },
+        "BTN_MIDDLE": {
+            "TYPE": "PRESS",
+            "POS": [
+                2220,
+                359
+            ]
+        },
+        "BTN_RIGHT": {
+            "TYPE": "PRESS",
+            "POS": [
+                2319,
+                564
+            ]
+        },
+        "KEY_R": {
+            "TYPE": "PRESS",
+            "POS": [
+                1955,
+                1008
+            ]
+        },
+        "KEY_C": {
+            "TYPE": "PRESS",
+            "POS": [
+                2100,
+                1006
+            ]
+        },
+        "KEY_V": {
+            "TYPE": "PRESS",
+            "POS": [
+                2298,
+                964
+            ]
+        },
+        "KEY_SPACE": {
+            "TYPE": "PRESS",
+            "POS": [
+                2326,
+                759
+            ]
+        },
+        "KEY_G": {
+            "TYPE": "PRESS",
+            "POS": [
+                1561,
+                1014
+            ]
+        },
+        "KEY_1": {
+            "TYPE": "PRESS",
+            "POS": [
+                1061,
+                960
+            ]
+        },
+        "KEY_2": {
+            "TYPE": "PRESS",
+            "POS": [
+                1313,
+                961
+            ]
+        },
+        "KEY_3": {
+            "TYPE": "PRESS",
+            "POS": [
+                1889,
+                826
+            ]
+        },
+        "KEY_F": {
+            "TYPE": "PRESS",
+            "POS": [
+                1771,
+                744
+            ]
+        },
+        "KEY_Q": {
+            "TYPE": "PRESS",
+            "POS": [
+                269,
+                394
+            ]
+        },
+        "KEY_E": {
+            "TYPE": "PRESS",
+            "POS": [
+                428,
+                391
+            ]
+        },
+        "KEY_TAB": {
+            "TYPE": "PRESS",
+            "POS": [
+                1161,
+                39
+            ]
+        },
+        "BTN_LT": {
+            "TYPE": "PRESS",
+            "POS": [
+                2320,
+                566
+            ]
+        },
+        "BTN_RT": {
+            "TYPE": "PRESS",
+            "POS": [
+                123,
+                549
+            ]
+        },
+        "BTN_DPAD_LEFT": {
+            "TYPE": "PRESS",
+            "POS": [
+                1060,
+                963
+            ]
+        },
+        "BTN_DPAD_RIGHT": {
+            "TYPE": "PRESS",
+            "POS": [
+                1309,
+                958
+            ]
+        },
+        "BTN_DPAD_UP": {
+            "TYPE": "PRESS",
+            "POS": [
+                1913,
+                830
+            ]
+        },
+        "BTN_DPAD_DOWN": {
+            "TYPE": "PRESS",
+            "POS": [
+                1985,
+                673
+            ]
+        },
+        "KEY_4": {
+            "TYPE": "PRESS",
+            "POS": [
+                1959,
+                668
+            ]
+        },
+        "BTN_A": {
+            "TYPE": "PRESS",
+            "POS": [
+                2316,
+                756
+            ]
+        },
+        "BTN_B": {
+            "TYPE": "PRESS",
+            "POS": [
+                2103,
+                1006
+            ]
+        },
+        "BTN_X": {
+            "TYPE": "PRESS",
+            "POS": [
+                1946,
+                1014
+            ]
+        },
+        "KEY_M": {
+            "TYPE": "PRESS",
+            "POS": [
+                2271,
+                134
+            ]
+        },
+        "BTN_LB": {
+            "TYPE": "PRESS",
+            "POS": [
+                270,
+                399
+            ]
+        },
+        "BTN_RB": {
+            "TYPE": "PRESS",
+            "POS": [
+                425,
+                395
+            ]
+        }
+    }
+}

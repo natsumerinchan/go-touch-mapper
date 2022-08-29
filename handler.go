@@ -180,8 +180,8 @@ func InitTouchHandler(
 		view_speed_y:   int32(config_json.Get("MOUSE").Get("SPEED").GetIndex(1).MustInt()),
 		// rs_speed_x:     config_json.Get("MOUSE").Get("RS_SPEED").GetIndex(0).MustFloat64(),
 		// rs_speed_y:     config_json.Get("MOUSE").Get("RS_SPEED").GetIndex(1).MustFloat64(),
-		rs_speed_x:   48,
-		rs_speed_y:   48,
+		rs_speed_x:   32,
+		rs_speed_y:   32,
 		wheel_init_x: int32(config_json.Get("WHEEL").Get("POS").GetIndex(0).MustInt()),
 		wheel_init_y: int32(config_json.Get("WHEEL").Get("POS").GetIndex(1).MustInt()),
 		wheel_range:  int32(config_json.Get("WHEEL").Get("RANGE").MustInt()),
@@ -268,7 +268,7 @@ func (self *TouchHandler) loop_handel_rs_move() {
 					self.u_input_control(UInput_mouse_move, int32((rs_x-0.5)*24), int32((rs_y-0.5)*24))
 				}
 			}
-			time.Sleep(time.Duration(10) * time.Millisecond)
+			time.Sleep(time.Duration(4) * time.Millisecond) //250HZ
 		}
 	}
 }
@@ -729,9 +729,15 @@ func (self *TouchHandler) handel_abs_events(events []*evdev.Event, dev_name stri
 					if last_value < float64(i)/5 && formatted_value >= float64(i)/5 {
 						translated_name := fmt.Sprintf("%s_%d", name, i)
 						self.handel_key_up_down("BTN_"+translated_name, DOWN, dev_name)
+						if i == 1 {
+							self.handel_key_up_down("BTN_"+name, DOWN, dev_name)
+						}
 					} else if last_value >= float64(i)/5 && formatted_value < float64(i)/5 {
 						translated_name := fmt.Sprintf("%s_%d", name, i)
 						self.handel_key_up_down("BTN_"+translated_name, UP, dev_name)
+						if i == 1 {
+							self.handel_key_up_down("BTN_"+name, UP, dev_name)
+						}
 					}
 				}
 				self.abs_last.Store(name, formatted_value)

@@ -1,0 +1,209 @@
+{
+    "SCREEN": {
+        "SIZE": [
+            2400,
+            1080
+        ]
+    },
+    "MOUSE": {
+        "SWITCH_KEY": "KEY_GRAVE",
+        "POS": [
+            1300,
+            540
+        ],
+        "SPEED": [
+            1,
+            1
+        ]
+    },
+    "WHEEL": {
+        "POS": [
+            389,
+            756
+        ],
+        "RANGE": 188,
+        "WASD": [
+            "KEY_W",
+            "KEY_A",
+            "KEY_S",
+            "KEY_D"
+        ]
+    },
+    "KEY_MAPS": {
+        "BTN_LEFT": {
+            "TYPE": "PRESS",
+            "POS": [
+                164,
+                559
+            ]
+        },
+        "BTN_MIDDLE": {
+            "TYPE": "PRESS",
+            "POS": [
+                1796,
+                428
+            ]
+        },
+        "BTN_RIGHT": {
+            "TYPE": "PRESS",
+            "POS": [
+                2290,
+                529
+            ]
+        },
+        "KEY_Q": {
+            "TYPE": "PRESS",
+            "POS": [
+                2219,
+                320
+            ]
+        },
+        "KEY_E": {
+            "TYPE": "PRESS",
+            "POS": [
+                2038,
+                318
+            ]
+        },
+        "KEY_R": {
+            "TYPE": "PRESS",
+            "POS": [
+                1890,
+                1001
+            ]
+        },
+        "KEY_C": {
+            "TYPE": "PRESS",
+            "POS": [
+                2075,
+                985
+            ]
+        },
+        "KEY_SPACE": {
+            "TYPE": "PRESS",
+            "POS": [
+                2288,
+                765
+            ]
+        },
+        "KEY_1": {
+            "TYPE": "PRESS",
+            "POS": [
+                1056,
+                926
+            ]
+        },
+        "KEY_2": {
+            "TYPE": "PRESS",
+            "POS": [
+                1321,
+                929
+            ]
+        },
+        "KEY_F": {
+            "TYPE": "PRESS",
+            "POS": [
+                1740,
+                739
+            ]
+        },
+        "KEY_TAB": {
+            "TYPE": "PRESS",
+            "POS": [
+                1203,
+                68
+            ]
+        },
+        "KEY_M": {
+            "TYPE": "PRESS",
+            "POS": [
+                183,
+                139
+            ]
+        },
+        "BTN_LT": {
+            "TYPE": "PRESS",
+            "POS": [
+                2289,
+                528
+            ]
+        },
+        "BTN_RT": {
+            "TYPE": "PRESS",
+            "POS": [
+                165,
+                560
+            ]
+        },
+        "BTN_X": {
+            "TYPE": "PRESS",
+            "POS": [
+                1890,
+                999
+            ]
+        },
+        "BTN_A": {
+            "TYPE": "PRESS",
+            "POS": [
+                2285,
+                768
+            ]
+        },
+        "BTN_B": {
+            "TYPE": "PRESS",
+            "POS": [
+                2074,
+                988
+            ]
+        },
+        "BTN_LB": {
+            "TYPE": "PRESS",
+            "POS": [
+                2038,
+                318
+            ]
+        },
+        "BTN_RB": {
+            "TYPE": "PRESS",
+            "POS": [
+                2220,
+                320
+            ]
+        },
+        "BTN_DPAD_LEFT": {
+            "TYPE": "PRESS",
+            "POS": [
+                1060,
+                928
+            ]
+        },
+        "BTN_DPAD_RIGHT": {
+            "TYPE": "PRESS",
+            "POS": [
+                1318,
+                926
+            ]
+        },
+        "BTN_DPAD_UP": {
+            "TYPE": "PRESS",
+            "POS": [
+                185,
+                140
+            ]
+        },
+        "BTN_DPAD_DOWN": {
+            "TYPE": "PRESS",
+            "POS": [
+                1736,
+                731
+            ]
+        },
+        "BTN_RS": {
+            "TYPE": "PRESS",
+            "POS": [
+                1789,
+                425
+            ]
+        }
+    }
+}
