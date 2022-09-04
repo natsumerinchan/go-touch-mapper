@@ -28,9 +28,6 @@ jobs:
     - name: test help
       run: ./go-touch-mapper -h
     
-    - name: dispatchtest
-      run: echo ${{ github.event.client_payload.content}}
-      
     - name: Create GitHub release
       uses: marvinpinto/action-automatic-releases@latest
       with:
