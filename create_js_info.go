@@ -142,7 +142,7 @@ func create_js_info_file(index int) {
 	dev_path := fmt.Sprintf("/dev/input/event%d", index)
 	fd, err := os.OpenFile(dev_path, os.O_RDONLY, 0)
 	if err != nil {
-		logger.Error("打开设备文件失败, %s", err)
+		logger.Errorf("打开设备文件失败, %v", err)
 		return
 	}
 	d := evdev.Open(fd)

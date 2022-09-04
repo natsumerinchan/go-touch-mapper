@@ -767,7 +767,7 @@ func (self *TouchHandler) handel_abs_events(events []*evdev.Event, dev_name stri
 				}
 			}
 		} else {
-			logger.Warn("%v config not found", dev_name)
+			logger.Warnf("%v config not found", dev_name)
 		}
 	}
 }
