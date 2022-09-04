@@ -1,7 +1,9 @@
 {
     "cSpell.words": [
+        "Debugf",
         "DPAD",
         "evdev",
+        "Infof",
         "lunixbochs",
         "PAGEUP",
         "struc",
@@ -11,6 +13,7 @@
         "UISETEVRELBIT",
         "UISETKEYBIT",
         "UISETPROPBIT",
+        "Warnf",
         "Wasd",
         "Whell"
     ]

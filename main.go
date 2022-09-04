@@ -6,7 +6,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net"
 	"os"
 	"os/exec"
@@ -18,6 +17,7 @@ import (
 
 	"github.com/akamensky/argparse"
 	"github.com/kenshaw/evdev"
+	"github.com/withmandala/go-log"
 )
 
 type event_pack struct {
@@ -46,20 +46,20 @@ func create_event_reader(indexes map[int]bool) chan *event_pack {
 	reader := func(event_reader chan *event_pack, index int) {
 		fd, err := os.OpenFile(fmt.Sprintf("/dev/input/event%d", index), os.O_RDONLY, 0)
 		if err != nil {
-			log.Fatal(err)
+			logger.Errorf("create_event_reader error:%v", err)
 		}
 		d := evdev.Open(fd)
 		defer d.Close()
 		event_ch := d.Poll(context.Background())
 		events := make([]*evdev.Event, 0)
 		dev_name := d.Name()
-		fmt.Printf("开始读取设备 : %s\n", dev_name)
+		logger.Infof("开始读取设备 : %s", dev_name)
 		d.Lock()
 		defer d.Unlock()
 		for {
 			select {
 			case <-global_close_signal:
-				fmt.Printf("释放设备 : %s \n ", dev_name)
+				logger.Infof("释放设备 : %s  ", dev_name)
 				return
 			case event := <-event_ch:
 				if event.Type == evdev.SyncReport {
@@ -92,7 +92,7 @@ func udp_event_injector(ch chan *event_pack, port int) {
 		Port: port,
 	})
 	if err != nil {
-		fmt.Println(err)
+		logger.Errorf("udp error %v", err)
 		return
 	}
 	defer listen.Close()
@@ -108,13 +108,13 @@ func udp_event_injector(ch chan *event_pack, port int) {
 			recv_ch <- buf[:n]
 		}
 	}()
-	fmt.Printf("已准备接收远程事件: 0.0.0.0:%d\n", port)
+	logger.Infof("已准备接收远程事件: 0.0.0.0:%d", port)
 	for {
 		select {
 		case <-global_close_signal:
 			return
 		case pack := <-recv_ch:
-			// fmt.Printf("%v\n", pack)
+			// logger.Debugf("%v", pack)
 			event_count := int(pack[0])
 			events := make([]*evdev.Event, 0)
 			for i := 0; i < event_count; i++ {
@@ -123,7 +123,7 @@ func udp_event_injector(ch chan *event_pack, port int) {
 					Code:  uint16(binary.LittleEndian.Uint16(pack[8*i+3 : 8*i+5])),
 					Value: int32(binary.LittleEndian.Uint32(pack[8*i+5 : 8*i+9])),
 				}
-				// fmt.Printf("%v\n", event)
+				// logger.Debugf("%v", event)
 				events = append(events, event)
 			}
 			e_pack := &event_pack{
@@ -131,7 +131,7 @@ func udp_event_injector(ch chan *event_pack, port int) {
 				events:   events,
 			}
 			ch <- e_pack
-			// fmt.Printf("接收到事件 : %v\n", e_pack)
+			// logger.Debugf("接收到事件 : %v", e_pack)
 		}
 	}
 }
@@ -230,7 +230,6 @@ func check_dev_type(dev *evdev.Evdev) dev_type {
 }
 
 func get_possible_device_indexes() map[int]dev_type {
-	// fmt.Printf("检测设备...\n")
 	files, _ := ioutil.ReadDir("/dev/input")
 	result := make(map[int]dev_type)
 	for _, file := range files {
@@ -246,7 +245,7 @@ func get_possible_device_indexes() map[int]dev_type {
 		index, _ := strconv.Atoi(file.Name()[5:])
 		fd, err := os.OpenFile(fmt.Sprintf("/dev/input/%s", file.Name()), os.O_RDONLY, 0)
 		if err != nil {
-			log.Fatal(err)
+			logger.Errorf("open dev error:%v", err)
 		}
 		d := evdev.Open(fd)
 		defer d.Close()
@@ -295,7 +294,7 @@ func execute_view_move(handelerInstance *TouchHandler, x, stepValue, sleepMS int
 }
 
 func stdin_control_view_move(handelerInstance *TouchHandler) {
-	fmt.Printf("输入数值以精确控制view移动 [ x | x 步长 间隔 ]\n")
+	logger.Debug("输入数值以精确控制view移动 [ x | x 步长 间隔 ]")
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		args := strings.Split(scanner.Text(), " ")
@@ -304,7 +303,7 @@ func stdin_control_view_move(handelerInstance *TouchHandler) {
 		if len(args) == 1 {
 			x, err = strconv.Atoi(args[0])
 			if err != nil {
-				fmt.Printf("输入错误: %s\n", err)
+				logger.Errorf("输入错误: %s", err)
 				continue
 			} else {
 				stepValue = 24
@@ -314,28 +313,28 @@ func stdin_control_view_move(handelerInstance *TouchHandler) {
 		} else if len(args) == 3 {
 			x, err = strconv.Atoi(args[0])
 			if err != nil {
-				fmt.Printf("输入错误: %s\n", err)
+				logger.Errorf("输入错误: %s", err)
 				continue
 			}
 			stepValue, err = strconv.Atoi(args[1])
 			if err != nil {
-				fmt.Printf("输入错误: %s\n", err)
+				logger.Errorf("输入错误: %s", err)
 				continue
 			}
 			sleepMS, err = strconv.Atoi(args[2])
 			if err != nil {
-				fmt.Printf("输入错误: %s\n", err)
+				logger.Errorf("输入错误: %s", err)
 				continue
 			}
 		} else {
-			fmt.Printf("参数错误\n usage:x | x stepValue sleepMS\n")
+			logger.Error("参数错误 usage:x | x stepValue sleepMS")
 			continue
 		}
-		fmt.Printf("x: %d stepValue: %d sleepMS: %d\n", x, stepValue, sleepMS)
+		logger.Infof("x: %d stepValue: %d sleepMS: %d", x, stepValue, sleepMS)
 		if handelerInstance.map_on {
 			execute_view_move(handelerInstance, x, stepValue, sleepMS)
 		} else {
-			fmt.Printf("等待映射开关打开中...\n")
+			logger.Info("等待映射开关打开中...")
 			for {
 				if handelerInstance.map_on == false {
 					time.Sleep(time.Duration(100) * time.Millisecond)
@@ -355,23 +354,23 @@ func get_MT_size(indexes map[int]bool) (int32, int32) { //获取MTPositionX和MT
 	for index, _ := range indexes {
 		fd, err := os.OpenFile(fmt.Sprintf("/dev/input/event%d", index), os.O_RDONLY, 0)
 		if err != nil {
-			log.Fatal(err)
+			logger.Errorf("get_MT_size error:%v", err)
 		}
 		d := evdev.Open(fd)
 		defer d.Close()
 		abs := d.AbsoluteTypes()
 		MTPositionX, _ := abs[evdev.AbsoluteMTPositionX]
 		MTPositionY, _ := abs[evdev.AbsoluteMTPositionY]
-		// fmt.Print("MTPositionX", MTPositionX.Max, "MTPositionY", MTPositionY.Max)
 		return MTPositionX.Max, MTPositionY.Max
 	}
 	return int32(1), int32(1)
 }
 
+var logger *log.Logger = log.New(os.Stdout)
+
 func main() {
-
+	logger.Debug("go-touch-mapper")
 	parser := argparse.NewParser("go-touch-mappeer", " ")
-
 	var auto_detect *bool = parser.Flag("a", "auto-detect", &argparse.Options{
 		Required: false,
 		Default:  false,
@@ -452,7 +451,7 @@ func main() {
 		}
 		for index, devType := range auto_detect_result {
 			devName := get_dev_name_by_index(index)
-			fmt.Printf("检测到设备 %s(/dev/input/event%d) : %s\n", devName, index, devTypeFriendlyName[devType])
+			logger.Infof("检测到设备 %s(/dev/input/event%d) : %s", devName, index, devTypeFriendlyName[devType])
 		}
 	}
 	if *create_js_info {
@@ -467,16 +466,16 @@ func main() {
 				create_js_info_file(js_events[0])
 			} else {
 				if len(js_events) == 0 {
-					fmt.Printf("未自动检测到手柄,请手动指定\n")
+					logger.Warn("未自动检测到手柄,请手动指定")
 				} else {
-					fmt.Printf("检测到多个手柄,无法使用 -a 自动检测,请使用 -e 手动指定\n")
+					logger.Warn("检测到多个手柄,无法使用 -a 自动检测,请使用 -e 手动指定")
 				}
 			}
 		} else {
 			if len(*eventList) == 0 {
-				fmt.Printf("请至少指定一个设备号\n")
+				logger.Warn("请至少指定一个设备号")
 			} else if len(*eventList) > 1 {
-				fmt.Printf("最多只能指定一个设备号\n")
+				logger.Warn("最多只能指定一个设备号")
 			} else {
 				create_js_info_file((*eventList)[0])
 			}
@@ -499,13 +498,13 @@ func main() {
 		touch_event_ch := make(chan *event_pack)
 		max_mt_x, max_mt_y := int32(1), int32(1)
 		if *touchIndex != -1 {
-			fmt.Printf("启用触屏混合 : event%d\n", *touchIndex)
+			logger.Infof("启用触屏混合 : event%d", *touchIndex)
 			touch_event_ch = create_event_reader(map[int]bool{*touchIndex: true})
 			max_mt_x, max_mt_y = get_MT_size(map[int]bool{*touchIndex: true})
 		} else {
 			for k, v := range auto_detect_result {
 				if v == type_touch {
-					fmt.Printf("启用触屏混合 : event%d\n", k)
+					logger.Infof("启用触屏混合 : event%d", k)
 					touch_event_ch = create_event_reader(map[int]bool{k: true})
 					max_mt_x, max_mt_y = get_MT_size(map[int]bool{k: true})
 					break
@@ -518,7 +517,7 @@ func main() {
 		go handel_u_input_mouse_keyboard(fileted_u_input_control_ch)
 
 		if *usingInputManager {
-			fmt.Println("触屏控制将使用inputManager处理")
+			logger.Debug("触屏控制将使用inputManager处理")
 			go handel_touch_using_input_manager(touch_control_ch) //先统一坐标系
 		} else {
 			go handel_touch_using_vTouch(touch_control_ch) //然后再处理转换旋转后的坐标
@@ -567,7 +566,7 @@ func main() {
 		signal.Notify(exitChan, os.Interrupt, os.Kill, syscall.SIGTERM)
 		<-exitChan
 		close(global_close_signal)
-		fmt.Println("已停止")
+		logger.Info("已停止")
 		time.Sleep(time.Millisecond * 40)
 	}
 }

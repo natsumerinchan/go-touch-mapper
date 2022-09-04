@@ -8,7 +8,6 @@ import (
 	"strings"
 	"syscall"
 
-	"fmt"
 	"os"
 	"unsafe"
 
@@ -36,7 +35,7 @@ func createDevice(f *os.File) (err error) {
 func create_u_input_touch_screen(width int32, height int32) *os.File {
 	deviceFile, err := os.OpenFile("/dev/uinput", syscall.O_WRONLY|syscall.O_NONBLOCK, 0660)
 	if err != nil {
-		fmt.Println("Error:", err)
+		logger.Errorf("create u_input touch_screen error:%v", err)
 		return nil
 	}
 	ioctl(deviceFile.Fd(), UISETEVBIT(), evKey)
@@ -92,7 +91,7 @@ func create_u_input_touch_screen(width int32, height int32) *os.File {
 func create_u_input_mouse_keyboard() *os.File {
 	deviceFile, err := os.OpenFile("/dev/uinput", syscall.O_WRONLY|syscall.O_NONBLOCK, 0660)
 	if err != nil {
-		fmt.Println("Error:", err)
+		logger.Errorf("create u_input mouse error:%v", err)
 		return nil
 	}
 	ioctl(deviceFile.Fd(), UISETEVBIT(), evSyn)
@@ -129,11 +128,10 @@ func create_u_input_mouse_keyboard() *os.File {
 }
 
 func handel_u_input_mouse_keyboard(u_input chan *u_input_control_pack) {
-
 	sizeofEvent := int(unsafe.Sizeof(evdev.Event{}))
 	sendEvents := func(fd *os.File, events []*evdev.Event) {
 		if fd == nil {
-			fmt.Printf("fd is nil,pass %v\n", events)
+			logger.Warnf("fd is nil,pass %v", events)
 			return
 		}
 
@@ -143,7 +141,7 @@ func handel_u_input_mouse_keyboard(u_input chan *u_input_control_pack) {
 		}
 		n, err := fd.Write(buf)
 		if err != nil {
-			fmt.Println(err, n)
+			logger.Errorf("write %v bytes error:%v", n, err)
 		}
 	}
 	ev_sync := evdev.Event{Type: EV_SYN, Code: 0, Value: 0}
@@ -198,10 +196,9 @@ func get_wm_size() (int32, int32) {
 	cmd := exec.Command("sh", "-c", "wm size")
 	out, err := cmd.Output()
 	if err != nil {
-		fmt.Println(err)
+		logger.Errorf("get wm size error:%v", err)
 	}
 	wxh := string(out[15 : len(out)-1])
-	// fmt.Println(wxh)
 	res := strings.Split(wxh, "x")
 	width, _ := strconv.Atoi(res[0])
 	height, _ := strconv.Atoi(res[1])
@@ -209,7 +206,6 @@ func get_wm_size() (int32, int32) {
 }
 
 func handel_touch_using_vTouch(control_ch chan *touch_control_pack) {
-
 	sizeofEvent := int(unsafe.Sizeof(evdev.Event{}))
 	sendEvents := func(fd *os.File, events []*evdev.Event) {
 		buf := make([]byte, sizeofEvent*len(events))
@@ -218,7 +214,7 @@ func handel_touch_using_vTouch(control_ch chan *touch_control_pack) {
 		}
 		n, err := fd.Write(buf)
 		if err != nil {
-			fmt.Println(err, n)
+			logger.Errorf("handel_touch_using_vTouch error on writing %v bytes :%v", n, err)
 		}
 	}
 	rot_xy := func(pack *touch_control_pack) (int32, int32) { //根据方向旋转坐标
@@ -239,7 +235,7 @@ func handel_touch_using_vTouch(control_ch chan *touch_control_pack) {
 	var count int32 = 0    //BTN_TOUCH 申请时为1 则按下 释放时为0 则松开
 	var last_id int32 = -1 //ABS_MT_SLOT last_id每次动作后修改 如果不等则额外发送MT_SLOT事件
 	w, h := get_wm_size()
-	fmt.Printf("已创建虚拟触屏 : %vx%v\n", w, h)
+	logger.Infof("已创建虚拟触屏 : %vx%v", w, h)
 	fd := create_u_input_touch_screen(w, h)
 	defer fd.Close()
 	for {

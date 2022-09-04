@@ -34,7 +34,7 @@ func init_v_mouse_controller(
 			Port: 6533,
 		})
 		if err != nil {
-			fmt.Printf("连接v_mouse失败 : %s\n", err.Error())
+			logger.Errorf("连接v_mouse失败 : %s", err.Error())
 			os.Exit(3)
 		}
 		defer socket.Close()
@@ -75,7 +75,6 @@ func (self *v_mouse_controller) get_max_xy_val() (int32, int32) {
 }
 
 func (self *v_mouse_controller) main_loop() {
-	fmt.Printf("v_mouse_controller: main_loop\n")
 	for {
 		select {
 		case <-global_close_signal:
@@ -142,7 +141,7 @@ func (self *v_mouse_controller) on_mouse_move(rel_x, rel_y int32) {
 			self.touchHandlerInstance.touch_move(self.mouse_id, self.mouse_x, self.mouse_y)
 		}
 	} else {
-		fmt.Printf("ERROR: mouse_move: not working\n")
+		logger.Error("ERROR: mouse_move: not working")
 	}
 }
 
@@ -157,7 +156,7 @@ func (self *v_mouse_controller) on_left_btn(up_down int32) {
 		}
 		self.on_mouse_move(0, 0)
 	} else {
-		fmt.Printf("ERROR: left_btn: not working\n")
+		logger.Error("ERROR: left_btn: not working")
 	}
 }
 
@@ -167,6 +166,6 @@ func (self *v_mouse_controller) on_hwheel_action(value int32) { //有待优化
 		self.touchHandlerInstance.touch_move(hwheel_id, self.mouse_x, self.mouse_y+value)
 		self.touchHandlerInstance.touch_release(hwheel_id)
 	} else {
-		fmt.Printf("ERROR: hwheel_action: not working\n")
+		logger.Error("ERROR: hwheel_action: not working")
 	}
 }

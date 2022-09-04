@@ -18,7 +18,7 @@ import (
 
 type TouchHandler struct {
 	events                   chan *event_pack            //接收事件的channel
-	touch_controll_channel   chan *touch_control_pack    //发送触屏控制信号的channel
+	touch_control_channel    chan *touch_control_pack    //发送触屏控制信号的channel
 	u_input                  chan *u_input_control_pack  //发送u_input控制信号的channel
 	map_on                   bool                        //映射模式开关
 	view_id                  int32                       //视角的触摸ID
@@ -112,10 +112,10 @@ func InitTouchHandler(
 
 	//检查mapperFilePath文件是否存在
 	if _, err := os.Stat(mapperFilePath); os.IsNotExist(err) {
-		fmt.Printf("没有找到映射配置文件 : %s \n", mapperFilePath)
+		logger.Errorf("没有找到映射配置文件 : %s ", mapperFilePath)
 		os.Exit(1)
 	} else {
-		fmt.Printf("使用映射配置文件 : %s \n", mapperFilePath)
+		logger.Infof("使用映射配置文件 : %s ", mapperFilePath)
 	}
 
 	content, _ := ioutil.ReadFile(mapperFilePath)
@@ -128,7 +128,7 @@ func InitTouchHandler(
 	workingDir, _ := filepath.Split(abs)
 	joystickInfosDir := filepath.Join(workingDir, "joystickInfos")
 	if _, err := os.Stat(joystickInfosDir); os.IsNotExist(err) {
-		fmt.Printf("%s 文件夹不存在,没有载入任何手柄配置文件\n", joystickInfosDir)
+		logger.Warnf("%s 文件夹不存在,没有载入任何手柄配置文件", joystickInfosDir)
 	} else {
 		files, _ := ioutil.ReadDir(joystickInfosDir)
 		for _, file := range files {
@@ -142,11 +142,11 @@ func InitTouchHandler(
 			content, _ := ioutil.ReadFile(filepath.Join(joystickInfosDir, file.Name()))
 			info, _ := simplejson.NewJson(content)
 			joystickInfo[file.Name()[:len(file.Name())-5]] = info
-			fmt.Printf("手柄配置文件已载入 : %s\n", file.Name())
+			logger.Infof("手柄配置文件已载入 : %s", file.Name())
 		}
 	}
 
-	// fmt.Printf("joystickInfo:%v\n", joystickInfo)
+	// logger.Infof("joystickInfo:%v", joystickInfo)
 
 	abs_last_map := sync.Map{}
 
@@ -160,13 +160,13 @@ func InitTouchHandler(
 	abs_last_map.Store("RS_Y", 0.5)
 
 	return &TouchHandler{
-		events:                 events,
-		touch_controll_channel: touch_controller,
-		u_input:                u_input,
-		map_on:                 false, //false
-		view_id:                -1,
-		wheel_id:               -1,
-		allocated_id:           make([]bool, 12),
+		events:                events,
+		touch_control_channel: touch_controller,
+		u_input:               u_input,
+		map_on:                false, //false
+		view_id:               -1,
+		wheel_id:              -1,
+		allocated_id:          make([]bool, 12),
 		// ^^^ 是可以创建超过12个的 只是不显示白点罢了
 		config:         config_json,
 		joystickInfo:   joystickInfo,
@@ -244,7 +244,7 @@ func (self *TouchHandler) u_input_control(action int8, arg1 int32, arg2 int32) {
 }
 
 func (self *TouchHandler) send_touch_control_pack(action int8, id int32, x int32, y int32) {
-	self.touch_controll_channel <- &touch_control_pack{
+	self.touch_control_channel <- &touch_control_pack{
 		action:   action,
 		id:       id,
 		x:        x,
@@ -278,7 +278,7 @@ func (self *TouchHandler) handel_view_move(offset_x int32, offset_y int32) { //�
 	if self.measure_sensitivity_mode {
 		self.total_move_x += offset_x
 		self.total_move_y += offset_y
-		fmt.Println("total_move_x:", self.total_move_x, "total_move_y:", self.total_move_y)
+		logger.Debugf("total_move_x:%v\ttotal_move_y:%v", self.total_move_x, self.total_move_y)
 	}
 	self.auto_release_view_count = 0
 	if self.view_id == -1 {
@@ -461,7 +461,7 @@ func (self *TouchHandler) handel_rel_event(x int32, y int32, HWhell int32, Wheel
 }
 
 func (self *TouchHandler) execute_key_action(key_name string, up_down int32, action *simplejson.Json, state interface{}) {
-	// fmt.Printf("excute action up_down:%d , action %v , state %v\n", up_down, action, state)
+	// logger.Infof("excute action up_down:%d , action %v , state %v", up_down, action, state)
 	switch action.Get("TYPE").MustString() {
 	case "PRESS": //按键的按下与释放直接映射为触屏的按下与释放
 		if up_down == DOWN {
@@ -548,7 +548,7 @@ func (self *TouchHandler) execute_key_action(key_name string, up_down int32, act
 
 			pos_len := len(action.Get("POS_S").MustArray())
 			interval_time := action.Get("INTERVAL").GetIndex(0).MustInt()
-			fmt.Printf("pos_len:%d, interval_time:%d\n", pos_len, interval_time)
+			// logger.Infof("pos_len:%d, interval_time:%d", pos_len, interval_time)
 			init_x := int32(action.Get("POS_S").GetIndex(0).GetIndex(0).MustInt())
 			init_y := int32(action.Get("POS_S").GetIndex(0).GetIndex(1).MustInt())
 			// self.touch_control(TouchActionRequire, tid, init_x, init_y)
@@ -583,20 +583,23 @@ func (self *TouchHandler) switch_map_mode() {
 
 	self.key_action_state_save.Range(func(key, value interface{}) bool {
 		self.execute_key_action(key.(string), UP, self.config.Get("KEY_MAPS").Get(key.(string)), value)
-		fmt.Printf("已释放key:%s\n", key.(string))
+		logger.Infof("已释放key:%s", key.(string))
 		return true
 	})
 
 	self.map_on = !self.map_on     //切换
 	self.map_switch_signal <- true //发送信号到v_mouse切换显示
 
-	fmt.Printf("map_on:%v\n", self.map_on)
-	fmt.Printf("view_id:%d\n", self.view_id)
-
+	// logger.Infof("map_on:%v", self.map_on)
+	if self.map_on {
+		logger.Info("映射[on]")
+	} else {
+		logger.Info("映射[off]")
+	}
 }
 
 func (self *TouchHandler) handel_key_up_down(key_name string, up_down int32, dev_name string) {
-	// fmt.Printf("key_name:%s, upd_own:%d, dev_name:%s\n", key_name, up_down, dev_name)
+	// logger.Debugf("key_name:%s, upd_own:%d, dev_name:%s", key_name, up_down, dev_name)
 	if key_name == "" {
 		return
 	}
@@ -661,7 +664,7 @@ func (self *TouchHandler) handel_key_up_down(key_name string, up_down int32, dev
 				//有则映射到普通按键
 				self.handel_key_up_down(joystick_btn_map_key_name.MustString(), up_down, dev_name+"_joystick_mapped")
 			} else {
-				// fmt.Printf("%s key %s not set keyboard map\n", dev_name, key_name)
+				// logger.Warnf("%s key %s not set keyboard map", dev_name, key_name)
 			}
 		} else {
 			if code, ok := friendly_name_2_keycode[key_name]; ok {
@@ -679,7 +682,7 @@ func (self *TouchHandler) handel_key_events(events []*evdev.Event, dev_name stri
 			if key_name, ok := jsconfig.Get("BTN").CheckGet(strconv.Itoa(int(event.Code))); ok {
 				self.handel_key_up_down(key_name.MustString(), event.Value, dev_name)
 			} else {
-				// fmt.Printf("unknown code %d from %s \n", event.Code, dev_name)
+				// logger.Warnf("unknown code %d from %s ", event.Code, dev_name)
 			}
 		}
 	} else {
@@ -753,7 +756,6 @@ func (self *TouchHandler) handel_abs_events(events []*evdev.Event, dev_name stri
 					ls_x, ls_y := self.getStick("LS")
 					if ls_x == 0.5 && ls_y == 0.5 {
 						if self.ls_wheel_released == false {
-							// fmt.Println("摇杆控制轮盘已释放")
 							self.ls_wheel_released = true
 						}
 					} else {
@@ -765,7 +767,7 @@ func (self *TouchHandler) handel_abs_events(events []*evdev.Event, dev_name stri
 				}
 			}
 		} else {
-			fmt.Println(dev_name + " config not found")
+			logger.Warn("%v config not found", dev_name)
 		}
 	}
 }
@@ -824,7 +826,6 @@ func (self *TouchHandler) mix_touch(touch_events chan *event_pack, max_mt_x, max
 					last_id = event.Value
 				}
 			}
-			// fmt.Println(pos_s)
 			for i := 0; i < 10; i++ {
 				if copy_id_statuses[i] != id_statuses[i] {
 					if id_statuses[i] { //false -> true 申请

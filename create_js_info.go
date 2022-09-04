@@ -38,7 +38,7 @@ func create_no_block_ch(dev *evdev.Evdev) chan *event_pack {
 				select {
 				case event_reader <- pack:
 				default:
-					// fmt.Printf("ignore\n")
+					// logger.Infof("ignore")
 				}
 				events = make([]*evdev.Event, 0)
 			} else {
@@ -77,7 +77,7 @@ func get_abs_meet_range(abs map[evdev.AbsoluteType]evdev.Axis, pack_ch chan *eve
 						return e.Code
 					} else {
 						last_value_save[e.Code] = e.Value
-						// fmt.Printf("%v\n", last_value_save)
+						// logger.Infof("%v", last_value_save)
 					}
 				} else {
 					last_value_save[e.Code] = e.Value
@@ -96,7 +96,7 @@ func get_abs_map(abs map[evdev.AbsoluteType]evdev.Axis, pack_ch chan *event_pack
 	used[16] = true
 	used[17] = true
 	if !LT_RT_BTN {
-		fmt.Printf("Pull LT down\n")
+		logger.Info("Pull LT down")
 		for {
 			code := get_abs_meet_range(abs, pack_ch, 0.99)
 			if !used[code] {
@@ -105,7 +105,7 @@ func get_abs_map(abs map[evdev.AbsoluteType]evdev.Axis, pack_ch chan *event_pack
 				break
 			}
 		}
-		fmt.Printf("Pull RT down\n")
+		logger.Info("Pull RT down")
 		for {
 			code := get_abs_meet_range(abs, pack_ch, 0.99)
 			if !used[code] {
@@ -116,7 +116,7 @@ func get_abs_map(abs map[evdev.AbsoluteType]evdev.Axis, pack_ch chan *event_pack
 		}
 	}
 	for _, axis := range []string{"LS", "RS"} {
-		fmt.Printf("%s ↓\n", axis)
+		logger.Infof("%s ↓", axis)
 		for {
 			code := get_abs_meet_range(abs, pack_ch, 0.99)
 			if !used[code] {
@@ -125,7 +125,7 @@ func get_abs_map(abs map[evdev.AbsoluteType]evdev.Axis, pack_ch chan *event_pack
 				break
 			}
 		}
-		fmt.Printf("%s →\n", axis)
+		logger.Infof("%s →", axis)
 		for {
 			code := get_abs_meet_range(abs, pack_ch, 0.99)
 			if !used[code] {
@@ -142,7 +142,7 @@ func create_js_info_file(index int) {
 	dev_path := fmt.Sprintf("/dev/input/event%d", index)
 	fd, err := os.OpenFile(dev_path, os.O_RDONLY, 0)
 	if err != nil {
-		fmt.Printf("打开设备文件失败, %s\n", err)
+		logger.Error("打开设备文件失败, %s", err)
 		return
 	}
 	d := evdev.Open(fd)
@@ -153,13 +153,13 @@ func create_js_info_file(index int) {
 	dev_name := d.Name()
 	abs := d.AbsoluteTypes()
 	keys := d.KeyTypes()
-	fmt.Printf("找到设备 : %s\n", dev_name)
+	logger.Infof("找到设备 : %s", dev_name)
 	// for k, v := range abs {
-	// 	fmt.Printf("Absolute : %d\n", int(k))
-	// 	fmt.Printf("\t%d,%d\n", v.Min, v.Max)
+	// 	logger.Infof("Absolute : %d", int(k))
+	// 	logger.Infof("\t%d,%d", v.Min, v.Max)
 	// }
 	// for k, _ := range keys {
-	// 	fmt.Printf("Key : %d\n", int(k))
+	// 	logger.Infof("Key : %d", int(k))
 	// }
 
 	output := simplejson.New()
@@ -202,7 +202,7 @@ func create_js_info_file(index int) {
 			LT_RT_BTN = true
 		}
 	} else {
-		fmt.Printf("未知DPAD种类 : %s\n", dev_name)
+		logger.Warnf("未知DPAD种类 : %s", dev_name)
 		return
 	}
 
@@ -212,7 +212,7 @@ func create_js_info_file(index int) {
 	}
 
 	for _, key_name := range need_keys {
-		fmt.Printf("press %s\n", key_name)
+		logger.Infof("press %s", key_name)
 		output.SetPath([]string{"BTN", fmt.Sprintf("%d", get_key(pack_ch))}, key_name)
 	}
 	abs_map := get_abs_map(abs, pack_ch, LT_RT_BTN)
@@ -222,9 +222,9 @@ func create_js_info_file(index int) {
 
 	jsonString, err := output.EncodePretty()
 	if err != nil {
-		fmt.Printf("%s\n", err)
+		logger.Errorf("%s\n", err)
 	}
-	fmt.Printf("%s\n", jsonString)
+	logger.Infof("%s\n", jsonString)
 
 	path, _ := exec.LookPath(os.Args[0])
 	abspath, _ := filepath.Abs(path)
@@ -234,10 +234,10 @@ func create_js_info_file(index int) {
 		os.Mkdir(joystickInfosDir, os.ModePerm)
 	}
 	savePath := filepath.Join(joystickInfosDir, fmt.Sprintf("%s.json", dev_name))
-	fmt.Printf("save to %s\n", savePath)
+	logger.Infof("save to %s\n", savePath)
 	err = ioutil.WriteFile(savePath, jsonString, 0644)
 	if err != nil {
-		fmt.Printf("%s\n", err)
+		logger.Errorf("%s\n", err)
 	}
 	return
 }
