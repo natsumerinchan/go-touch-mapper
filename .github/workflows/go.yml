@@ -1,7 +1,8 @@
 name: Go build
 
 on:
-  workflow_dispatch:
+  repository_dispatch:
+    types: RELEASE
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -21,9 +22,21 @@ jobs:
     - name: Build arm64
       run: CGO_ENABLE=0 GOOS=linux GOARCH=arm64 go build -o go-touch-mapper_arm64
     
-    - name: list
+    - name: list files
       run: ls -al
       
     - name: test help
-      run: ./go-touch-mapper_amd64 -h
+      run: ./go-touch-mapper -h
+    
+    - name: dispatchtest
+      run: echo ${{ github.event.client_payload.content}}
+#     - name: Create GitHub release
+#       uses: marvinpinto/action-automatic-releases@latest
+#       with:
+#         repo_token: "${{ secrets.GITHUB_TOKEN }}"
+#         automatic_release_tag: ${{ env.ReleaseVersion }}
+#         title: ${{ env.ReleaseVersion }}
+#         prerelease: false
+#         files: |
+#           artifacts/packages/*
 
