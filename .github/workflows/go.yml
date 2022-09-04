@@ -1,4 +1,4 @@
-name: Go
+name: Go build
 
 on:
   workflow_dispatch:
@@ -13,11 +13,15 @@ jobs:
       with:
         go-version: 1.18
 
-    - name: Build
-      run: go build -o go-touch-mapper_x86
+    - name: Build amd64
+      run: CGO_ENABLE=0 GOOS=linux GOARCH=amd64 go build -o go-touch-mapper_amd64
+    
+    - name: Build arm64
+      run: CGO_ENABLE=0 GOOS=linux GOARCH=arm64 go build -o go-touch-mapper_arm64
     
     - name: list
       run: ls -al
+      
     - name: help
       run: ./go-touch-mapper_x86 -h
 
