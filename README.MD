@@ -2,35 +2,34 @@
 
 将手柄,键鼠操作映射为触屏事件
 
-## Run
+## Quick start
 
-从[releases](https://github.com/DriverLin/go-touch-mapper/releases)下载最新版本的 go-touch-mapper 二进制文件
+从release直接下载编译好的二进制程序
 
-使用adb执行(无需root)
+一般手机平板下载 [go-touch-mapper_arm64](https://github.com/DriverLin/go-touch-mapper/releases/latest/download/go-touch-mapper_arm64)
+
+androidX86下载 [go-touch-mapper_amd64](https://github.com/DriverLin/go-touch-mapper/releases/latest/download/go-touch-mapper_amd64)
+
+读取dev和创建uinput需要shell或者root权限
+
+所以可以用adb shell或者su shell运行
+
 ```
-adb push go-touch-mapper /data/local/tmp
-adb shell 
 cd /data/local/tmp
+curl -LJo go-touch-mapper https://github.com/DriverLin/go-touch-mapper/releases/latest/download/go-touch-mapper_arm64
 chmod 777 ./go-touch-mapper
 ./go-touch-mapper -h
 ```
 
-root下直接运行
-```
-wget wget https://github.com/DriverLin/go-touch-mapper/releases/latest/download/go-touch-mapper
-chmod 777 ./go-touch-mapper
-sudo ./go-touch-mapper -h
-```
-
 ## Build & Run
 
-使用termux编译并运行
+环境 termux
 ```
 pkg i golang -y
 git clone https://github.com/DriverLin/go-touch-mapper
 cd go-touch-mapper
 go build
-sudo ./go-touch-mapper -h
+./go-touch-mapper -h
 ```
 
 ## Help
@@ -39,9 +38,8 @@ sudo ./go-touch-mapper -h
 usage: go-touch-mappeer [-h|--help] [-a|--auto-detect] [--create-js-info]
                         [-e|--event] [-t|--touch <integer>] [-c|--config
                         "<value>"] [-i|--inputManager] [-r|--remoteControl]
-                        [-p|--port <integer>]
-
-
+                        [-p|--port <integer>] [-v|--v-mouse] [--auto-release
+                        <integer>] [--measure-mode]
 
 Arguments:
 
@@ -49,15 +47,23 @@ Arguments:
   -a  --auto-detect     自动检测设备. Default: false
       --create-js-info  创建手柄配置文件. Default: false
   -e  --event           键盘或鼠标或手柄的设备号
-  -t  --touch
+  -t  --touch          
                         触屏设备号,可选,当指定时可同时使用映射与触屏而不冲突.
                         Default: -1
   -c  --config          配置文件路径
   -i  --inputManager    是否使用inputManager,需开启额外控制进程.
                         Default: false
   -r  --remoteControl   是否从UDP接收远程事件. Default: false
-  -p  --port            指定监听远程事件的UDP端口号,默认61069.
-                        Default: 61069
+  -p  --port            指定监听远程事件的UDP端口号. Default: 61069
+  -v  --v-mouse        
+                        用触摸操作模拟鼠标,需要额光标外显示程序.
+                        Default: false
+      --auto-release   
+                        触发视角自动释放所需的静止ms数,50ms为检查单位,置0禁用.
+                        Default: 200
+      --measure-mode   
+                        显示视角移动像素计数,且可输入数值模拟滑动,方向键可微调.
+                        Default: false
 ```
 ## Example
 
