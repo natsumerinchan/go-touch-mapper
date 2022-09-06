@@ -47,6 +47,7 @@ func create_event_reader(indexes map[int]bool) chan *event_pack {
 		fd, err := os.OpenFile(fmt.Sprintf("/dev/input/event%d", index), os.O_RDONLY, 0)
 		if err != nil {
 			logger.Errorf("create_event_reader error:%v", err)
+			return
 		}
 		d := evdev.Open(fd)
 		defer d.Close()
@@ -62,7 +63,10 @@ func create_event_reader(indexes map[int]bool) chan *event_pack {
 				logger.Infof("释放设备 : %s  ", dev_name)
 				return
 			case event := <-event_ch:
-				if event.Type == evdev.SyncReport {
+				if event == nil {
+					logger.Warnf("null event from %s , reader stopped !", dev_name)
+					return
+				} else if event.Type == evdev.SyncReport {
 					pack := &event_pack{
 						dev_name: dev_name,
 						events:   events,
@@ -77,9 +81,6 @@ func create_event_reader(indexes map[int]bool) chan *event_pack {
 
 	}
 	event_reader := make(chan *event_pack)
-	// for _, index := range indexes {
-	// 	go reader(event_reader, index)
-	// }
 	for index, _ := range indexes {
 		go reader(event_reader, index)
 	}
