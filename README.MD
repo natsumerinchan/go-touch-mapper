@@ -87,10 +87,10 @@ go-touch-mapper -a -c configs/SMC_JS.json
 
 如果自动检测漏掉了某些设备，你仍然可以使用 -e 与 -t 来手动添加它们
 
-## Switch Mode
+## 映射开关
 默认键盘使用 ` 键，可在配置文件中修改，手柄为SELECT+RS组合键
 
-## ConfigFile
+## 配置文件
 [创建映射文件工具](https://driverlin.github.io/go-touch-mapper/build/)
 
 如有需要，可参照[EXAMPLE.JSON](https://github.com/DriverLin/go-touch-mapper/blob/main/configs/EXAMPLE.JSON)手动修改配置文件
@@ -99,7 +99,7 @@ go-touch-mapper -a -c configs/SMC_JS.json
 
 按住键盘按键后，点击即可添加按键映射
 
-## Joystick
+## 手柄支持
 joystickInfos文件夹下json文件为手柄配置文件
 
 按照按键位置统一为XBOX手柄按键
@@ -107,6 +107,11 @@ joystickInfos文件夹下json文件为手柄配置文件
 扳机键按照力度映射为5个等级的按键 BTN_LT_1 ... BTN_LT_5
 
 没有线性扳机的手柄例如 Switch Pro controller 只有 BTN_LT 和 BTN_RT
+
+  注意⚠ : 
+
+* 手柄的按键代码在不同设备上可能有所差异
+* 如果出现按键无反应的情况，建议重新创建手柄配置文件
 
 ### 手动创建手柄配置文件
 ```
@@ -117,7 +122,7 @@ go-touch-mapper --create-js-info -e 16
 go-touch-mapper --create-js-info -a
 ```
 
-## RemoteControl
+## 远程控制
 ```
 go-touch-mapper -t 5 -c configs/SMC_JS.json -r
 ```
@@ -131,20 +136,26 @@ python remote_control.py
 
 ## [InputManager](https://github.com/DriverLin/inputManager-touch-interface)
 ### 说明
-由Scrcpy修改而来，在ADB下使用app_process启动
+由Scrcpy修改而来，使用app_process启动
 
-通过UDP与主程序通信控制触屏
+通过 Unix Domain Socket 与主程序通信控制触屏
 
 可在多显示器情况下指定displayID
 
+只能在adb shell下启用 
+
+且由于Unix Domain Socket的相关权限设定，主程序也必须运行在adb shell下
+
 ### 使用
 
+###### 先启动主程序(server)
+```
+go-touch-mapper -a -c configs/SMC_JS.json -i
+```
+
+###### 再启动InputManager(client)
 ```
 adb push inputManager/app-debug.apk /data/local/tmp/
 adb shell CLASSPATH=/data/local/tmp/app-debug.apk  app_process ./ com.genymobile.scrcpy.Server 0
-```
-
-```
-go-touch-mapper -t 5 -e 15 -e 19 -e 16 -c configs/SMC_JS.json -i
 ```
 
