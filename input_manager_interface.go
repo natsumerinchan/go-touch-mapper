@@ -8,7 +8,7 @@ import (
 )
 
 func handel_touch_using_input_manager(control_ch chan *touch_control_pack) {
-	unixAddr, err := net.ResolveUnixAddr("unix", "@unix_socket")
+	unixAddr, err := net.ResolveUnixAddr("unix", "@uds_input_manager")
 	if err != nil {
 		logger.Errorf("创建Unix Domain Socket失败 : %s", err.Error())
 		os.Exit(3)
