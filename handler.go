@@ -278,7 +278,7 @@ func (self *TouchHandler) handel_view_move(offset_x int32, offset_y int32) { //è
 	if self.measure_sensitivity_mode {
 		self.total_move_x += offset_x
 		self.total_move_y += offset_y
-		logger.Debugf("total_move_x:%v\ttotal_move_y:%v", self.total_move_x, self.total_move_y)
+		logger.Infof("total_move_x:%v\ttotal_move_y:%v", self.total_move_x, self.total_move_y)
 	}
 	self.auto_release_view_count = 0
 	if self.view_id == -1 {

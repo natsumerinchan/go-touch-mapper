@@ -295,7 +295,7 @@ func execute_view_move(handelerInstance *TouchHandler, x, stepValue, sleepMS int
 }
 
 func stdin_control_view_move(handelerInstance *TouchHandler) {
-	logger.Debug("输入数值以精确控制view移动 [ x | x 步长 间隔 ]")
+	logger.Info("输入数值以精确控制view移动 [ x | x 步长 间隔 ]")
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		args := strings.Split(scanner.Text(), " ")
@@ -370,7 +370,8 @@ func get_MT_size(indexes map[int]bool) (int32, int32) { //获取MTPositionX和MT
 var logger *log.Logger = log.New(os.Stdout)
 
 func main() {
-	logger.Debug("go-touch-mapper")
+	// logger.WithDebug()
+	logger.Info("go-touch-mapper")
 	parser := argparse.NewParser("go-touch-mappeer", " ")
 	var auto_detect *bool = parser.Flag("a", "auto-detect", &argparse.Options{
 		Required: false,
@@ -518,7 +519,7 @@ func main() {
 		go handel_u_input_mouse_keyboard(fileted_u_input_control_ch)
 
 		if *usingInputManager {
-			logger.Debug("触屏控制将使用inputManager处理")
+			logger.Info("触屏控制将使用inputManager处理")
 			go handel_touch_using_input_manager(touch_control_ch) //先统一坐标系
 		} else {
 			go handel_touch_using_vTouch(touch_control_ch) //然后再处理转换旋转后的坐标

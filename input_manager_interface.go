@@ -1,21 +1,26 @@
 package main
 
 import (
+	"bufio"
 	"encoding/binary"
 	"net"
 	"os"
 )
 
 func handel_touch_using_input_manager(control_ch chan *touch_control_pack) {
-	socket, err := net.DialUDP("udp", nil, &net.UDPAddr{
-		IP:   net.IPv4(0, 0, 0, 0),
-		Port: 61068,
-	})
+	unixAddr, err := net.ResolveUnixAddr("unix", "@unix_socket")
 	if err != nil {
-		logger.Errorf("连接input_manager失败 : %s", err.Error())
+		logger.Errorf("创建Unix Domain Socket失败 : %s", err.Error())
 		os.Exit(3)
 	}
-	defer socket.Close()
+	unixListener, _ := net.ListenUnix("unix", unixAddr)
+	defer unixListener.Close()
+	logger.Info("waiting for input manager to connect")
+	unixConn, _ := unixListener.AcceptUnix()
+	defer unixConn.Close()
+	logger.Info("input manager connected")
+	writer := bufio.NewWriter(unixConn)
+
 	for {
 		select {
 		case <-global_close_signal:
@@ -30,7 +35,8 @@ func handel_touch_using_input_manager(control_ch chan *touch_control_pack) {
 			binary.LittleEndian.PutUint32(y, uint32(control_data.y))
 			// logger.Debugf("接收到控制命令 : %v", control_data)
 			// logger.Debugf("write bytes : %v", []byte{action, id, x[0], x[1], x[2], x[3], y[0], y[1], y[2], y[3]})
-			socket.Write([]byte{action, id, x[0], x[1], x[2], x[3], y[0], y[1], y[2], y[3]})
+			writer.Write([]byte{action, id, x[0], x[1], x[2], x[3], y[0], y[1], y[2], y[3]})
+			writer.Flush()
 		}
 	}
 }
