@@ -17,10 +17,10 @@ jobs:
       run: go build
       
     - name: Build amd64
-      run: CGO_ENABLE=0 GOOS=linux GOARCH=amd64 go build -o go-touch-mapper_amd64
+      run: CGO_ENABLE=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o go-touch-mapper_amd64
     
     - name: Build arm64
-      run: CGO_ENABLE=0 GOOS=linux GOARCH=arm64 go build -o go-touch-mapper_arm64
+      run: CGO_ENABLE=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o go-touch-mapper_arm64
     
     - name: list files
       run: ls -al
