@@ -658,6 +658,7 @@ func (self *TouchHandler) handel_key_up_down(key_name string, up_down int32, dev
 				go self.execute_key_action(key_name, up_down, action, state)
 			}
 		} else {
+			logger.Debugf("%s 未设置触屏映射", key_name)
 			return
 		}
 	} else {
@@ -667,7 +668,7 @@ func (self *TouchHandler) handel_key_up_down(key_name string, up_down int32, dev
 				//有则映射到普通按键
 				self.handel_key_up_down(joystick_btn_map_key_name.MustString(), up_down, dev_name+"_joystick_mapped")
 			} else {
-				// logger.Warnf("%s key %s not set keyboard map", dev_name, key_name)
+				logger.Debugf("joyStick[%s] : %s 没有键盘映射", dev_name, key_name)
 			}
 		} else {
 			if code, ok := friendly_name_2_keycode[key_name]; ok {
@@ -685,7 +686,7 @@ func (self *TouchHandler) handel_key_events(events []*evdev.Event, dev_name stri
 			if key_name, ok := jsconfig.Get("BTN").CheckGet(strconv.Itoa(int(event.Code))); ok {
 				self.handel_key_up_down(key_name.MustString(), event.Value, dev_name)
 			} else {
-				// logger.Warnf("unknown code %d from %s ", event.Code, dev_name)
+				logger.Debugf("未知键码 %d from joyStick[%s]", event.Code, dev_name)
 			}
 		}
 	} else {
