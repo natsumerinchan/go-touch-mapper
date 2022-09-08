@@ -42,6 +42,8 @@ type u_input_control_pack struct {
 	arg2   int32
 }
 
+type touch_control_func func(data touch_control_pack)
+
 func create_event_reader(indexes map[int]bool) chan *event_pack {
 	reader := func(event_reader chan *event_pack, index int) {
 		fd, err := os.OpenFile(fmt.Sprintf("/dev/input/event%d", index), os.O_RDONLY, 0)
@@ -369,9 +371,37 @@ func get_MT_size(indexes map[int]bool) (int32, int32) { //获取MTPositionX和MT
 
 var logger *log.Logger = log.New(os.Stdout)
 
+func test() {
+	for i := 0; i < 16; i++ {
+		start := time.Now()
+		end := time.Now()
+		cost := end.Nanosecond() - start.Nanosecond()
+		fmt.Printf("cost : %v ns\n", cost)
+	}
+
+}
+
+func chan_test() {
+	ch := make(chan time.Time)
+	go func() {
+		for i := 0; i < 16; i++ {
+			start := <-ch
+			end := time.Now()
+			cost := end.Nanosecond() - start.Nanosecond()
+			fmt.Printf("cost : %v ns\n", cost)
+		}
+	}()
+	for i := 0; i < 16; i++ {
+		time.Sleep(10 * time.Duration(time.Millisecond))
+		ch <- time.Now()
+	}
+}
+
 func main() {
-	// logger.WithDebug()
-	logger.Info("go-touch-mapper")
+	// test()
+	// fmt.Printf("====================")
+	// chan_test()
+	// return
 	parser := argparse.NewParser("go-touch-mappeer", " ")
 	var auto_detect *bool = parser.Flag("a", "auto-detect", &argparse.Options{
 		Required: false,
@@ -435,10 +465,20 @@ func main() {
 		Help:     "显示视角移动像素计数,且可输入数值模拟滑动,方向键可微调",
 	})
 
+	var debug_mode *bool = parser.Flag("d", "debug_mode", &argparse.Options{
+		Required: false,
+		Default:  false,
+		Help:     "打印debug信息",
+	})
+
 	err := parser.Parse(os.Args)
 	if err != nil {
 		fmt.Print(parser.Usage(err))
 		os.Exit(1)
+	}
+	if *debug_mode {
+		logger.WithDebug()
+		logger.Debug("debug on")
 	}
 
 	auto_detect_result := make(map[int]dev_type)
@@ -494,7 +534,6 @@ func main() {
 		}
 		events_ch := create_event_reader(eventSet)
 
-		touch_control_ch := make(chan *touch_control_pack)
 		u_input_control_ch := make(chan *u_input_control_pack)
 		fileted_u_input_control_ch := make(chan *u_input_control_pack)
 		touch_event_ch := make(chan *event_pack)
@@ -518,18 +557,19 @@ func main() {
 
 		go handel_u_input_mouse_keyboard(fileted_u_input_control_ch)
 
+		var couch_control_func touch_control_func
 		if *usingInputManager {
 			logger.Info("触屏控制将使用inputManager处理")
-			go handel_touch_using_input_manager(touch_control_ch) //先统一坐标系
+			couch_control_func = handel_touch_using_input_manager()
 		} else {
-			go handel_touch_using_vTouch(touch_control_ch) //然后再处理转换旋转后的坐标
+			couch_control_func = handel_touch_using_vTouch()
 		}
 
 		map_switch_signal := make(chan bool) //通知虚拟鼠标当前为鼠标还是映射模式
 		touchHandler := InitTouchHandler(
 			*configPath,
 			events_ch,
-			touch_control_ch,
+			couch_control_func,
 			u_input_control_ch,
 			!*usingInputManager,
 			map_switch_signal,

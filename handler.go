@@ -16,9 +16,11 @@ import (
 	"github.com/kenshaw/evdev"
 )
 
+var perfPoint time.Time = time.Now() //debug测量用时
+
 type TouchHandler struct {
 	events                   chan *event_pack            //接收事件的channel
-	touch_control_channel    chan *touch_control_pack    //发送触屏控制信号的channel
+	touch_control_func       touch_control_func          //发送触屏控制信号的channel
 	u_input                  chan *u_input_control_pack  //发送u_input控制信号的channel
 	map_on                   bool                        //映射模式开关
 	view_id                  int32                       //视角的触摸ID
@@ -102,7 +104,7 @@ func rand_offset() int32 {
 func InitTouchHandler(
 	mapperFilePath string,
 	events chan *event_pack,
-	touch_controller chan *touch_control_pack,
+	touch_control_func touch_control_func,
 	u_input chan *u_input_control_pack,
 	view_range_limited bool,
 	map_switch_signal chan bool,
@@ -160,13 +162,13 @@ func InitTouchHandler(
 	abs_last_map.Store("RS_Y", 0.5)
 
 	return &TouchHandler{
-		events:                events,
-		touch_control_channel: touch_controller,
-		u_input:               u_input,
-		map_on:                false, //false
-		view_id:               -1,
-		wheel_id:              -1,
-		allocated_id:          make([]bool, 12),
+		events:             events,
+		touch_control_func: touch_control_func,
+		u_input:            u_input,
+		map_on:             false, //false
+		view_id:            -1,
+		wheel_id:           -1,
+		allocated_id:       make([]bool, 12),
 		// ^^^ 是可以创建超过12个的 只是不显示白点罢了
 		config:         config_json,
 		joystickInfo:   joystickInfo,
@@ -244,13 +246,16 @@ func (self *TouchHandler) u_input_control(action int8, arg1 int32, arg2 int32) {
 }
 
 func (self *TouchHandler) send_touch_control_pack(action int8, id int32, x int32, y int32) {
-	self.touch_control_channel <- &touch_control_pack{
+	self.touch_control_func(touch_control_pack{
 		action:   action,
 		id:       id,
 		x:        x,
 		y:        y,
 		screen_x: self.screen_x,
 		screen_y: self.screen_y,
+	})
+	if logger.IsDebug() {
+		logger.Debugf("handel event use %v \n\n", time.Since(perfPoint))
 	}
 }
 
@@ -354,7 +359,6 @@ func (self *TouchHandler) handel_wheel_action(action int8, abs_x int32, abs_y in
 }
 
 func (self *TouchHandler) get_wasd_now_target() (int32, int32) { //根据wasd当前状态 获取wasd滚轮的目标位置
-	// self.wasd_up_down_stause
 	var x int32 = 0
 	var y int32 = 0
 	if self.wasd_up_down_statues[0] {
@@ -461,7 +465,7 @@ func (self *TouchHandler) handel_rel_event(x int32, y int32, HWhell int32, Wheel
 }
 
 func (self *TouchHandler) execute_key_action(key_name string, up_down int32, action *simplejson.Json, state interface{}) {
-	// logger.Infof("excute action up_down:%d , action %v , state %v", up_down, action, state)
+	logger.Debugf("excute action up_down:%d , action %v , state %v", up_down, action, state)
 	switch action.Get("TYPE").MustString() {
 	case "PRESS": //按键的按下与释放直接映射为触屏的按下与释放
 		if up_down == DOWN {
@@ -576,7 +580,6 @@ func (self *TouchHandler) execute_key_action(key_name string, up_down int32, act
 }
 
 func (self *TouchHandler) switch_map_mode() {
-
 	self.total_move_x = 0
 	self.total_move_y = 0                           //总移动距离清零
 	self.view_id = self.touch_release(self.view_id) //视角id释放
@@ -599,7 +602,7 @@ func (self *TouchHandler) switch_map_mode() {
 }
 
 func (self *TouchHandler) handel_key_up_down(key_name string, up_down int32, dev_name string) {
-	// logger.Debugf("key_name:%s, upd_own:%d, dev_name:%s", key_name, up_down, dev_name)
+	logger.Debugf("key_name:%s, upd_own:%d, dev_name:%s", key_name, up_down, dev_name)
 	if key_name == "" {
 		return
 	}
@@ -876,6 +879,9 @@ func (self *TouchHandler) handel_event() {
 						Wheel = event.Value
 					}
 				}
+			}
+			if logger.IsDebug() {
+				perfPoint = time.Now()
 			}
 			self.handel_rel_event(x, y, HWhell, Wheel)
 			self.handel_key_events(key_events, event_pack.dev_name)

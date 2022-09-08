@@ -39,7 +39,7 @@ usage: go-touch-mappeer [-h|--help] [-a|--auto-detect] [--create-js-info]
                         [-e|--event] [-t|--touch <integer>] [-c|--config
                         "<value>"] [-i|--inputManager] [-r|--remoteControl]
                         [-p|--port <integer>] [-v|--v-mouse] [--auto-release
-                        <integer>] [--measure-mode]
+                        <integer>] [--measure-mode] [-d|--debug_mode]
 
 Arguments:
 
@@ -47,7 +47,7 @@ Arguments:
   -a  --auto-detect     自动检测设备. Default: false
       --create-js-info  创建手柄配置文件. Default: false
   -e  --event           键盘或鼠标或手柄的设备号
-  -t  --touch          
+  -t  --touch
                         触屏设备号,可选,当指定时可同时使用映射与触屏而不冲突.
                         Default: -1
   -c  --config          配置文件路径
@@ -55,15 +55,16 @@ Arguments:
                         Default: false
   -r  --remoteControl   是否从UDP接收远程事件. Default: false
   -p  --port            指定监听远程事件的UDP端口号. Default: 61069
-  -v  --v-mouse        
+  -v  --v-mouse
                         用触摸操作模拟鼠标,需要额光标外显示程序.
                         Default: false
-      --auto-release   
+      --auto-release
                         触发视角自动释放所需的静止ms数,50ms为检查单位,置0禁用.
                         Default: 200
-      --measure-mode   
+      --measure-mode
                         显示视角移动像素计数,且可输入数值模拟滑动,方向键可微调.
                         Default: false
+  -d  --debug_mode      打印debug信息. Default: false
 ```
 ## Example
 
