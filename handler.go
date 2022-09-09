@@ -42,13 +42,14 @@ type TouchHandler struct {
 	wheel_wasd               []string
 	view_lock                sync.Mutex //视角控制相关的锁 用于自动释放和控制相关
 	wheel_lock               sync.Mutex //左摇杆控制相关的锁 用于自动释放和控制相关
-	auto_release_view_count  int32      //自动释放计时器 有视角移动则重置 否则100ms加一 超过1s 自动释放
-	abs_last                 sync.Map   //abs值的上一次值 用于手柄
-	using_joystick_name      string     //当前正在使用的手柄 针对不同手柄死区不同 但程序支持同时插入多个手柄 因此会识别最进发送事件的手柄作为死区配置
-	ls_wheel_released        bool       //左摇杆滚轮释放
-	wasd_wheel_released      bool       //wasd滚轮释放 两个都释放时 轮盘才会释放
-	wasd_wheel_last_x        int32      //wasd滚轮上一次的x坐标
-	wasd_wheel_last_y        int32      //wasd滚轮上一次的y坐标
+	touch_control_lock       sync.Mutex
+	auto_release_view_count  int32    //自动释放计时器 有视角移动则重置 否则100ms加一 超过1s 自动释放
+	abs_last                 sync.Map //abs值的上一次值 用于手柄
+	using_joystick_name      string   //当前正在使用的手柄 针对不同手柄死区不同 但程序支持同时插入多个手柄 因此会识别最进发送事件的手柄作为死区配置
+	ls_wheel_released        bool     //左摇杆滚轮释放
+	wasd_wheel_released      bool     //wasd滚轮释放 两个都释放时 轮盘才会释放
+	wasd_wheel_last_x        int32    //wasd滚轮上一次的x坐标
+	wasd_wheel_last_y        int32    //wasd滚轮上一次的y坐标
 	wasd_up_down_statues     []bool
 	key_action_state_save    sync.Map
 	BTN_SELECT_UP_DOWN       int32
@@ -198,6 +199,7 @@ func InitTouchHandler(
 		},
 		view_lock:                sync.Mutex{},
 		wheel_lock:               sync.Mutex{},
+		touch_control_lock:       sync.Mutex{},
 		auto_release_view_count:  0,
 		abs_last:                 abs_last_map,
 		using_joystick_name:      "",
@@ -249,6 +251,8 @@ func (self *TouchHandler) u_input_control(action int8, arg1 int32, arg2 int32) {
 }
 
 func (self *TouchHandler) send_touch_control_pack(action int8, id int32, x int32, y int32) {
+	self.touch_control_lock.Lock()
+	defer self.touch_control_lock.Unlock()
 	self.touch_control_func(touch_control_pack{
 		action:   action,
 		id:       id,
