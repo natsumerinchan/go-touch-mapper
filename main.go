@@ -17,7 +17,6 @@ import (
 
 	"github.com/akamensky/argparse"
 	"github.com/kenshaw/evdev"
-	"github.com/withmandala/go-log"
 )
 
 type event_pack struct {
@@ -368,8 +367,6 @@ func get_MT_size(indexes map[int]bool) (int32, int32) { //获取MTPositionX和MT
 	}
 	return int32(1), int32(1)
 }
-
-var logger *log.Logger = log.New(os.Stdout)
 
 func test() {
 	for i := 0; i < 16; i++ {
