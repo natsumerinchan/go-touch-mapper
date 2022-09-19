@@ -197,8 +197,9 @@ func get_wm_size() (int32, int32) {
 	out, err := cmd.Output()
 	if err != nil {
 		logger.Errorf("get wm size error:%v", err)
+		os.Exit(4)
 	}
-	wxh := string(out[15 : len(out)-1])
+	wxh := strings.TrimSpace(strings.Split(strings.ReplaceAll(string(out), "\n", " "), " ")[2])
 	res := strings.Split(wxh, "x")
 	width, _ := strconv.Atoi(res[0])
 	height, _ := strconv.Atoi(res[1])

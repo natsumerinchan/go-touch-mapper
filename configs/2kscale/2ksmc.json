@@ -1,0 +1,111 @@
+{
+    "SCREEN": {
+        "SIZE": [
+            2400,
+            1080
+        ]
+    },
+    "MOUSE": {
+        "SWITCH_KEY": "KEY_GRAVE",
+        "POS": [
+            1300,
+            540
+        ],
+        "SPEED": [
+            1,
+            1
+        ]
+    },
+    "WHEEL": {
+        "POS": [
+            480,
+            793
+        ],
+        "RANGE": 175,
+        "WASD": [
+            "KEY_W",
+            "KEY_A",
+            "KEY_S",
+            "KEY_D"
+        ]
+    },
+    "KEY_MAPS": {
+        "KEY_Q": {
+            "TYPE": "PRESS",
+            "POS": [
+                1200,
+                906
+            ]
+        },
+        "BTN_RIGHT": {
+            "TYPE": "PRESS",
+            "POS": [
+                1656,
+                796
+            ]
+        },
+        "BTN_LEFT": {
+            "TYPE": "PRESS",
+            "POS": [
+                330,
+                545
+            ]
+        },
+        "KEY_1": {
+            "TYPE": "PRESS",
+            "POS": [
+                2024,
+                131
+            ]
+        },
+        "KEY_2": {
+            "TYPE": "PRESS",
+            "POS": [
+                2023,
+                239
+            ]
+        },
+        "KEY_3": {
+            "TYPE": "PRESS",
+            "POS": [
+                1961,
+                356
+            ]
+        },
+        "KEY_F": {
+            "TYPE": "PRESS",
+            "POS": [
+                2073,
+                385
+            ]
+        },
+        "KEY_R": {
+            "TYPE": "PRESS",
+            "POS": [
+                1788,
+                996
+            ]
+        },
+        "KEY_LEFTSHIFT": {
+            "TYPE": "PRESS",
+            "POS": [
+                1946,
+                1004
+            ]
+        },
+        "KEY_SPACE": {
+            "TYPE": "PRESS",
+            "POS": [
+                2088,
+                743
+            ]
+        },
+        "KEY_TAB": {
+            "TYPE": "PRESS",
+            "POS": [
+                1189,
+                39
+            ]
+        }
+    }
+}

@@ -823,13 +823,17 @@ func (self *TouchHandler) mix_touch(touch_events chan *event_pack, max_mt_x, max
 					if id_statuses[i] { //false -> true 申请
 						x, y := translate_xy(pos_s[i][0], pos_s[i][1])
 						id_2_vid[i] = self.touch_require(x, y)
+						logger.Debugf("mixTouch\trequire\t[%d] (%d,%d)", i, x, y)
 					} else {
 						self.touch_release(id_2_vid[i])
+						logger.Debugf("miTouch\trelease\t[%d] ", i)
 					}
 				} else {
 					if pos_s[i][0] != copy_pos_s[i][0] || pos_s[i][1] != copy_pos_s[i][1] {
 						x, y := translate_xy(pos_s[i][0], pos_s[i][1])
 						self.touch_move(id_2_vid[i], x, y)
+						logger.Debugf("mixTouch\tmove\t[%d] (%d,%d)", i, x, y)
+
 					}
 				}
 			}

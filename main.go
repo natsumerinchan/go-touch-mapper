@@ -399,7 +399,7 @@ func main() {
 	// fmt.Printf("====================")
 	// chan_test()
 	// return
-	parser := argparse.NewParser("go-touch-mappeer", " ")
+	parser := argparse.NewParser("go-touch-mapper", " ")
 	var auto_detect *bool = parser.Flag("a", "auto-detect", &argparse.Options{
 		Required: false,
 		Default:  false,
@@ -416,10 +416,10 @@ func main() {
 		Required: false,
 		Help:     "键盘或鼠标或手柄的设备号",
 	})
-	var touchIndex *int = parser.Int("t", "touch", &argparse.Options{
+	var mixTouchDisabled *bool = parser.Flag("t", "touch-disabled", &argparse.Options{
 		Required: false,
-		Help:     "触屏设备号,可选,当指定时可同时使用映射与触屏而不冲突",
-		Default:  -1,
+		Help:     "关闭触屏混合",
+		Default:  false,
 	})
 	var configPath *string = parser.String("c", "config", &argparse.Options{
 		Required: false,
@@ -429,7 +429,7 @@ func main() {
 	var usingInputManager *bool = parser.Flag("i", "inputManager", &argparse.Options{
 		Required: false,
 		Default:  false,
-		Help:     "是否使用inputManager,需开启额外控制进程",
+		Help:     "使用inputManager控制触摸",
 	})
 
 	var using_remote_control *bool = parser.Flag("r", "remoteControl", &argparse.Options{
@@ -535,11 +535,7 @@ func main() {
 		fileted_u_input_control_ch := make(chan *u_input_control_pack)
 		touch_event_ch := make(chan *event_pack)
 		max_mt_x, max_mt_y := int32(1), int32(1)
-		if *touchIndex != -1 {
-			logger.Infof("启用触屏混合 : event%d", *touchIndex)
-			touch_event_ch = create_event_reader(map[int]bool{*touchIndex: true})
-			max_mt_x, max_mt_y = get_MT_size(map[int]bool{*touchIndex: true})
-		} else {
+		if !*mixTouchDisabled {
 			for k, v := range auto_detect_result {
 				if v == type_touch {
 					logger.Infof("启用触屏混合 : event%d", k)
