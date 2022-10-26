@@ -88,6 +88,10 @@ func EVIOCGRAB() int {
 	return _IOW('E', 0x90, 4) //sizeof(int)
 }
 
+func EVIOCGPHYS() int {
+	return _IOC(iocRead, 'E', 0x07, maxPhysInfoSize)
+}
+
 //Syscall
 func ioctl(fd uintptr, name int, data uintptr) error {
 	_, _, err := syscall.Syscall(syscall.SYS_IOCTL, fd, uintptr(name), data)
@@ -127,6 +131,7 @@ type InputEvent struct {
 //Ref: uinput.h
 const (
 	uinputMaxNameSize = 80
+	maxPhysInfoSize   = 80
 )
 
 type UinputUserDev struct {

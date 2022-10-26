@@ -269,6 +269,17 @@ func get_dev_name_by_index(index int) string {
 	return d.Name()
 }
 
+// func get_dev_phys_info_by_index(index int) string {
+// 	fd, err := os.OpenFile(fmt.Sprintf("/dev/input/event%d", index), os.O_RDONLY, 0)
+// 	if err != nil {
+// 		return "read name error"
+// 	}
+// 	d := evdev.Open(fd)
+// 	defer d.Close()
+// 	return d.Name()
+// 	// return d
+// }
+
 func execute_view_move(handelerInstance *TouchHandler, x, stepValue, sleepMS int) {
 	handelerInstance.handel_view_move(0, 0)
 	time.Sleep(time.Millisecond * time.Duration(sleepMS))

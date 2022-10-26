@@ -62,8 +62,8 @@ func create_u_input_touch_screen(width int32, height int32) *os.File {
 	absMin[absMtTrackingId] = 0
 
 	var absMax [absCnt]int32
-	absMax[absMtPositionX] = width
-	absMax[absMtPositionY] = height
+	absMax[absMtPositionX] = width << 8  //可以通过缩放 来获得更高精度
+	absMax[absMtPositionY] = height << 8 //坐标系会自动以原点缩放
 	absMax[absMtTouchMajor] = 255
 	absMax[absMtWidthMajor] = 0
 	absMax[absMtSlot] = 255

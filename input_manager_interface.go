@@ -32,8 +32,8 @@ func handel_touch_using_input_manager() touch_control_func {
 		id := byte(control_data.id & 0xff)
 		x := make([]byte, 4)
 		y := make([]byte, 4)
-		binary.LittleEndian.PutUint32(x, uint32(control_data.x))
-		binary.LittleEndian.PutUint32(y, uint32(control_data.y))
+		binary.LittleEndian.PutUint32(x, uint32(control_data.x>>8)) //缩放 但是不会累计误差
+		binary.LittleEndian.PutUint32(y, uint32(control_data.y>>8))
 		writer.Write([]byte{action, id, x[0], x[1], x[2], x[3], y[0], y[1], y[2], y[3]})
 		writer.Flush()
 	}
