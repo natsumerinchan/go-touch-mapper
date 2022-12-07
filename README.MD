@@ -28,7 +28,7 @@ chmod 777 ./go-touch-mapper
 pkg i golang -y
 git clone https://github.com/DriverLin/go-touch-mapper
 cd go-touch-mapper
-go build
+CGO_ENABLE=0 GOOS=linux go build -ldflags="-s -w"
 ./go-touch-mapper -h
 ```
 
